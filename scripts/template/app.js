@@ -1358,7 +1358,27 @@ function renderCrumbs() {
   $('#crumbs').innerHTML = `${back}${all}<span class="cur">${esc(scopeLabel(state.scope))}</span>`;
 }
 
+// Drop the selection and any dim/highlight classes so the canvas is back to a neutral state.
+function clearSelection() {
+  state.selected = null;
+  cy.elements().removeClass('faded hl');
+}
+
+$('#crumbs').onclick = (ev) => {
+  if (ev.target.closest('[data-back]')) {
+    const h = state.history.pop();
+    if (!h) return;
+    clearSelection();
+    state.scope = h.scope; state.view = h.view;
+    redraw(); renderLeft();
+  }
+  if (ev.target.closest('[data-all]')) go({ type: 'all' });
+};
+
 function go(scope, view) {
+  // A new scope is a new graph: a selection from the previous one must not dim it.
+  // Focusing a node keeps it selected on purpose (the graph is built around that node).
+  if (scope.type !== 'node') clearSelection();
   state.history.push({ scope: state.scope, view: state.view });
   if (state.history.length > 50) state.history.shift();
   state.scope = scope;
@@ -1393,7 +1413,7 @@ cy.on('dbltap', 'node', (ev) => {
   else if (n.data('fid')) go({ type: 'file', key: n.data('fid') }, 'entity');
 });
 cy.on('tap', 'edge', (ev) => { const r = ev.target.data('ref'); if (r != null) showEdge(edges[r]); });
-cy.on('tap', (ev) => { if (ev.target === cy) { state.selected = null; cy.elements().removeClass('faded hl'); showOverview(); } });
+cy.on('tap', (ev) => { if (ev.target === cy) { clearSelection(); showOverview(); } });
 
 // ---------------------------------------------------------------- right panel
 const detail = $('#detail');
@@ -1713,7 +1733,7 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && menu) { ev.preventDefault(); menu.open = false; menu.querySelector('summary').focus(); return; }
   if (ev.target.matches('input, textarea, select')) return;
   if (ev.key === '/') { ev.preventDefault(); search.focus(); }
-  else if (ev.key === 'Escape') { state.selected = null; cy.elements().removeClass('faded hl'); showOverview(); }
+  else if (ev.key === 'Escape') { clearSelection(); showOverview(); }
   else if (ev.key === 'r' && state.selected && nodes.get(state.selected)?.nt === 'entity') toggleReview(state.selected, 'ok');
   else if ((ev.key === 'j' || ev.key === 'k') && state.csCursor) {
     const c = state.csCursor;
