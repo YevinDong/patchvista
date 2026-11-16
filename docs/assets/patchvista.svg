@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+  <title id="title">PatchVista</title>
+  <desc id="desc">See the change. Follow the impact. A code patch connected to its callers and dependencies.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101b30"/><stop offset="1" stop-color="#102b36"/></linearGradient>
+    <linearGradient id="accent"><stop stop-color="#83b8ff"/><stop offset="1" stop-color="#6ee7bf"/></linearGradient>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#819aba" opacity=".16"/></pattern>
+  </defs>
+  <rect width="1200" height="300" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="300" rx="20" fill="url(#dots)"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <text x="64" y="72" font-size="13" letter-spacing="3" fill="#8eb6d4">CODE REVIEW · IN CONTEXT</text>
+    <text x="60" y="153" font-size="66" font-weight="700" letter-spacing="-2" fill="#f2f7ff">PatchVista</text>
+    <text x="64" y="202" font-size="24" fill="#b7c9df">See the change. Follow the impact.</text>
+    <rect x="64" y="236" width="64" height="3" rx="1.5" fill="url(#accent)"/>
+    <g fill="none" stroke="#496983" stroke-width="2">
+      <path d="M754 151H817M987 151H1020V77H1051M1020 151V225H1051"/>
+      <circle cx="1020" cy="151" r="5" fill="#83b8ff" stroke="none"/>
+    </g>
+    <rect x="653" y="126" width="101" height="50" rx="10" fill="#192d44" stroke="#496983"/>
+    <text x="703" y="157" font-size="14" fill="#bfd2e9" text-anchor="middle">caller</text>
+    <rect x="817" y="103" width="170" height="96" rx="14" fill="#1c3549" stroke="#83b8ff" stroke-width="1.5"/>
+    <text x="838" y="132" font-size="12" letter-spacing="1" fill="#99c7ff">THE CHANGE</text>
+    <path d="M839 154h12m-6-6v12m15-6h99" stroke="#6ee7bf" stroke-width="3" stroke-linecap="round"/>
+    <path d="M839 176h12m9 0h70" stroke="#ff9cad" stroke-width="3" stroke-linecap="round"/>
+    <rect x="1051" y="52" width="101" height="50" rx="10" fill="#192d44" stroke="#496983"/>
+    <text x="1101" y="83" font-size="14" fill="#bfd2e9" text-anchor="middle">function</text>
+    <rect x="1051" y="200" width="101" height="50" rx="10" fill="#193b3d" stroke="#53998b"/>
+    <text x="1101" y="231" font-size="14" fill="#9ce9ce" text-anchor="middle">resource</text>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cytoscape": "^3.34.4",
+    "cytoscape-elk": "^2.3.0",
+    "diff": "^9.0.0",
+    "elkjs": "^0.12.1",
+    "tree-sitter-wasms": "^0.1.13",
+    "typescript": "^5.9.3",
+    "web-tree-sitter": "^0.22.6"
+  }
+}
