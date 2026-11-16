@@ -25,12 +25,497 @@ const KIND_ICON = {
   function: 'braces', method: 'code-xml', class: 'box', interface: 'brackets', type: 'variable', enum: 'list', const: 'variable', namespace: 'network', test: 'test-tube-diagonal', module: 'layers',
   db: 'database', redis: 'zap', mq: 'mail', config: 'settings-2', route: 'route', http: 'globe', job: 'clock', dep: 'package', file: 'file',
 };
-const KIND_LABEL = {
-  function: '函数', method: '方法', class: '类', interface: '接口', type: '类型', enum: '枚举', const: '常量/变量', namespace: '命名空间',
-  test: '测试', module: '模块级代码', db: '数据库表', redis: 'Redis', mq: '消息/队列', config: '配置项', route: 'HTTP 路由',
-  http: '外部 HTTP', job: '定时任务', dep: '依赖包',
+// ---------------------------------------------------------------- i18n
+const LANG_KEY = 'patchvista:lang';
+const LANGS = ['en', 'zh'];
+// priority: `render --lang` > saved preference > browser language > en
+let currentLang = [D.defaultLang, storage.getItem(LANG_KEY), /^zh/i.test(navigator.language || '') ? 'zh' : 'en'].find((l) => LANGS.includes(l));
+
+const MESSAGES = {
+  en: {
+    skipToDetails: 'Skip to review details',
+    stats: (f, a, d, e, r) => `<span>${f} files</span><span><b class="a">+${a}</b> <b class="d">−${d}</b></span><span>${e} entities</span><span>${r} resources</span>`,
+    progressTitle: 'Review progress',
+    progressText: (done, total) => `Reviewed ${done}/${total}`,
+    themeGroup: 'Appearance mode',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
+    langGroup: 'Language / 语言',
+    editorAria: 'Editor to open files',
+    editorTitle: 'Editor used when clicking file paths',
+    editorNone: 'Do not open',
+
+    navAria: 'Review navigation',
+    detailAria: 'Review details',
+    tabFiles: 'Files',
+    tabSets: 'Review Paths',
+    tabRisks: 'Risks',
+    tabRes: 'Resources',
+    splitterFileAria: 'File panel width',
+    splitterDetailAria: 'Detail panel width',
+    splitterTitle: 'Drag or press Left/Right arrow keys to resize; Home to reset',
+
+    noAiAnalysis: 'No AI analysis provided, automatically grouped by module',
+    csEntities: (n) => `${n} entities`,
+    csFiles: (n) => `${n} files`,
+    csRestTitle: 'Other changes',
+    csRestSummary: 'Entities not categorized by AI into any change set',
+    csModSummary: (n) => `${n} changed entities`,
+    csMovesTitle: 'Pure moves / imports only',
+    csMovesSummary: 'Unchanged content with location shift or imports change only',
+    csTestsTitle: 'Tests',
+    csTestsSummary: (n) => `${n} test-related entities`,
+    noRisksFound: 'No risk items found',
+    noResFound: 'No resources detected',
+
+    fileSearchAria: 'Filter file paths',
+    fileSearchPlaceholder: 'Filter file paths…',
+    fileExpandAll: 'Expand all directories',
+    fileCollapseAll: 'Collapse all directories',
+    fileOriginalPath: (p) => `\nOriginal: ${p}`,
+    fileNoMatches: 'No matching files',
+    fileHiddenCount: (n) => `Hidden ${n} files`,
+    chipShow: 'Click to show',
+    chipHide: 'Click to hide',
+    ftypeLabel: 'File Types',
+    ftypeHidden: (n) => `File Types · Hidden ${n}`,
+    ftypeSumTitle: 'Filter by file extension',
+    ftypeSumHiddenTitle: (h) => `Hidden: ${h}`,
+    ftypePopupHeader: 'Filter by extension (synced with left file list)',
+
+    viewModule: 'Module View',
+    viewEntity: 'Entity View',
+    searchAria: 'Search functions, files, or resources',
+    searchPlaceholder: 'Search functions / files / resources…',
+    searchTitle: 'Press / to focus search, Enter to view matches',
+    displayMenu: 'Display',
+    optContext: 'Unmodified callers/callees',
+    optRes: 'Resources (DB/Redis/MQ/config…)',
+    optTests: 'Tests',
+    optMoves: 'Pure moves / imports only',
+    optTypes: 'Types/interfaces',
+    optDepth: 'Neighbor depth',
+    fitAria: 'Fit to window',
+    fitTitle: 'Fit to window',
+    graphAria: 'Change relationship graph; access entity details via files and review paths',
+    legendCalls: '── Calls',
+    legendTypeRefs: '- - Type refs',
+    legendAdded: '── Added',
+    busyLayout: 'Laying out…',
+    emptyGraph: 'No visible nodes in current scope (check "Display" options)',
+
+    crumbBack: 'Back',
+    crumbAll: 'All',
+    scopeCs: (t) => `Change Set: ${t}`,
+    scopeModule: (m) => `Module: ${m}`,
+    scopeFile: (f) => `File: ${f}`,
+    scopeFocus: (n) => `Focus: ${n}`,
+    scopeSet: (l) => l ?? 'Selected set',
+    scopeSearch: (s) => `Search: ${s}`,
+    scopeAll: 'All Changes',
+
+    kinds: {
+      function: 'Function', method: 'Method', class: 'Class', interface: 'Interface', type: 'Type', enum: 'Enum', const: 'Const/Var', namespace: 'Namespace',
+      test: 'Test', module: 'Module code', db: 'DB Table', redis: 'Redis', mq: 'Message/Queue', config: 'Config Item', route: 'HTTP Route',
+      http: 'External HTTP', job: 'Cron Job', dep: 'Dependency', file: 'File',
+    },
+    statuses: { added: 'Added', modified: 'Modified', deleted: 'Deleted', moved: 'Moved', renamed: 'Renamed', context: 'Unchanged', removed: 'Removed', unchanged: 'Unchanged', existing: 'Existing' },
+
+    openInEditor: 'Open in editor',
+    moduleCodeLabel: (name) => `${name} · Module code`,
+    none: 'None',
+    reviewedBtn: 'Reviewed',
+    questionBtn: 'Question',
+    focusBtn: 'Focus in Graph',
+    confMedium: 'Medium Conf',
+    confLow: 'Low Conf',
+    confTitle: 'Matched by name, potential false positive',
+    newCallPill: 'New Call',
+    testPill: 'Test',
+    movedPill: 'Moved',
+    signatureChangedPill: 'Signature Change',
+    untestedPill: 'Untested',
+    originalLocation: 'Original location',
+    originalName: 'Original name',
+    belongsToCs: 'Belongs to Change Set',
+    signatureHeading: 'Signature Changes',
+    signatureWarning: (n) => `Signature changed, but ${n} callers below were <b>not modified</b> in this diff. Please verify compatibility.`,
+    usedByHeading: (n) => `Used By (${n})`,
+    deletedHint: 'Deleted',
+    noCallersHint: 'No callers found (entrypoint, framework callback, or accessed via DI/reflection)',
+    callersChangedHint: 'Callers modified in this diff',
+    callersUnchangedHint: 'Unmodified callers',
+    testsHint: 'Tests',
+    importedByHint: (n) => `Imported by ${n} files`,
+    formerCallersHeading: (n) => `Callers Before Deletion (${n})`,
+    unmodifiedWarning: 'Unmodified!',
+    fileChanged: 'File modified',
+    dependenciesHeading: (n) => `Dependencies / Calls (${n})`,
+    resourceAccessHeading: (n) => `Resource Access (${n})`,
+    logsHeading: (n) => `Logs (${n})`,
+    codeChangesHeading: 'Code Changes',
+    codeChangesMovedHint: (f) => `Content unchanged, moved from <code>${esc(f)}</code> to current location`,
+    viewFileDiff: 'View diff for whole file',
+    contextFuncHint: 'This function was not modified in this diff; shown due to relationships with changed code.',
+    diffAriaCode: 'Code diff',
+    diffAriaFile: 'File diff',
+
+    configDeletedWarn: (n) => `This config item was removed from configuration files, but remains referenced in ${n} code locations:`,
+    configUndeclaredWarn: 'Newly read config item is not declared in any <code>.env*</code> example file.',
+    definitionsHeading: (n) => `Definitions / Schema Changes (${n})`,
+    accessingHeading: (n) => `Accessing Entities (${n})`,
+    addedAccessHint: 'Added access in this diff',
+    removedAccessHint: 'Removed access in this diff',
+    unchangedAccessHint: 'Existing access in changed code',
+    resourceHeuristicHint: 'Resources are identified heuristically (via code pattern matching); false positives or omissions may occur.',
+
+    fileTag: 'File',
+    fileRenamedPill: (sim) => `Renamed ${sim ?? ''}%`,
+    fileChangedEntsHeading: (n) => `Changed Entities (${n})`,
+    involvedResHeading: 'Involved Resources',
+    fileBinaryHint: 'Binary file',
+    fileLockHint: 'Lock file, omitted',
+    fileRenamedSameHint: 'Content unchanged',
+    fileNoDiffHint: 'No text changes',
+    fileTruncatedHint: 'Diff truncated (exceeds limit)',
+    fileContextHint: 'This file was not modified in this diff.',
+
+    moduleTag: 'Module',
+    expandModuleBtn: 'Expand to Entity View',
+    moduleFilesHeading: (n) => `Files (${n})`,
+    moduleEntsHeading: (n) => `Changed Entities (${n})`,
+
+    addedPill: 'Added',
+    removedPill: 'Removed',
+    existingPill: 'Existing',
+    occurrencesHeading: 'Occurrences',
+
+    riskLevelPill: (l) => `Risk ${l}`,
+    autoGroupedPill: 'Auto Grouped',
+    csEntitiesCount: (n) => `${n} entities`,
+    whyHeading: 'Why This Change',
+    reviewFocusHeading: 'Review Focus',
+    readingOrderHeading: 'Suggested Reading Order',
+    readingOrderShortcut: '(j / k to navigate)',
+    relatedFilesHeading: 'Related Files',
+    relatedResHeading: 'Related Resources',
+
+    srcRule: 'Rule',
+    sourceLabel: (s, r) => `Source: ${s}${r ? ' · ' + r : ''}`,
+    relatedNodesHeading: 'Related Nodes',
+    locationsHeading: 'Locations',
+
+    overviewTitleDefault: 'Change Overview',
+    aiSummaryTag: 'AI Summary',
+    noAiOverview: 'No AI analysis available yet. Have your AI assistant read <code>digest.md</code> and produce <code>analysis.json</code>, then re-render to view change intents, grouped sets, and review order.',
+    gridFiles: 'Files',
+    gridAdditions: 'Added Lines',
+    gridDeletions: 'Deleted Lines',
+    gridResources: 'Resources',
+    gridAddedEnts: 'Added Entities',
+    gridModEnts: 'Modified Entities',
+    gridDelEnts: 'Deleted Entities',
+    gridMovedEnts: 'Moved / Renamed',
+    keyRisksHeading: 'Key Risks',
+    reviewPathsHeading: 'Review Paths',
+    commitsHeading: (n) => `Commits (${n})`,
+    operationsHeading: 'Operations',
+    operationsHints: 'Click node for details · Double-click to focus relationships · Double-click module to expand · <span class="kbd">/</span> Search · <span class="kbd">j</span>/<span class="kbd">k</span> Navigate within change set · <span class="kbd">r</span> Mark reviewed · <span class="kbd">Esc</span> Deselect',
+    generatedMeta: (time, sec, tsFiles) => `Generated at ${time} · Elapsed ${sec}s${tsFiles ? ` · TS ref analysis on ${tsFiles} files` : ''}`,
+
+    classPrefix: 'Class',
+    moduleFilesCount: (n) => `${n} files`,
+    unmodifiedModule: 'Unmodified module',
+    rawModuleCode: 'Module code',
+    rawImportOnly: 'Imports only',
+    rawTopLevel: 'Imports / Top-level statements',
+    signatureChangedCard: 'Signature change',
+    reviewedCard: 'Reviewed',
+    questionCard: 'Question',
+    undeclaredCard: 'Undeclared',
+    stillReferencedCard: 'Still referenced',
+  },
+  zh: {
+    skipToDetails: '跳到审阅详情',
+    stats: (f, a, d, e, r) => `<span>${f} 文件</span><span><b class="a">+${a}</b> <b class="d">−${d}</b></span><span>${e} 实体</span><span>${r} 资源</span>`,
+    progressTitle: '审阅进度',
+    progressText: (done, total) => `已审 ${done}/${total}`,
+    themeGroup: '外观模式',
+    themeLight: '白色',
+    themeDark: '黑色',
+    themeSystem: '系统',
+    langGroup: 'Language / 语言',
+    editorAria: '打开文件的编辑器',
+    editorTitle: '点击文件路径时用哪个编辑器打开',
+    editorNone: '不跳转',
+
+    navAria: '审阅导航',
+    detailAria: '审阅详情',
+    tabFiles: '文件',
+    tabSets: '审阅路径',
+    tabRisks: '风险',
+    tabRes: '资源',
+    splitterFileAria: '文件面板宽度',
+    splitterDetailAria: '详情面板宽度',
+    splitterTitle: '拖动或按左右方向键调整宽度；Home 恢复默认',
+
+    noAiAnalysis: '未提供 AI 分析，按模块自动分组',
+    csEntities: (n) => `${n} 实体`,
+    csFiles: (n) => `${n} 文件`,
+    csRestTitle: '其他改动',
+    csRestSummary: '未被 AI 归入任何改动集的实体',
+    csModSummary: (n) => `${n} 个改动实体`,
+    csMovesTitle: '纯移动 / 仅 import 变化',
+    csMovesSummary: '内容未变仅位置变化，或只改了 import',
+    csTestsTitle: '测试',
+    csTestsSummary: (n) => `${n} 个测试相关实体`,
+    noRisksFound: '没有发现风险项',
+    noResFound: '未检测到资源',
+
+    fileSearchAria: '筛选文件路径',
+    fileSearchPlaceholder: '筛选文件路径…',
+    fileExpandAll: '展开全部目录',
+    fileCollapseAll: '收起全部目录',
+    fileOriginalPath: (p) => `\n原路径：${p}`,
+    fileNoMatches: '没有匹配的文件',
+    fileHiddenCount: (n) => `已隐藏 ${n} 个文件`,
+    chipShow: '点击显示',
+    chipHide: '点击隐藏',
+    ftypeLabel: '文件类型',
+    ftypeHidden: (n) => `文件类型 · 已隐藏 ${n}`,
+    ftypeSumTitle: '按文件后缀筛选',
+    ftypeSumHiddenTitle: (h) => `已隐藏：${h}`,
+    ftypePopupHeader: '按后缀筛选（与左侧文件列表联动）',
+
+    viewModule: '模块视图',
+    viewEntity: '实体视图',
+    searchAria: '搜索函数、文件或资源',
+    searchPlaceholder: '搜索函数 / 文件 / 资源…',
+    searchTitle: '按 / 聚焦搜索，Enter 查看匹配结果',
+    displayMenu: '显示',
+    optContext: '未改动的调用方/被调方',
+    optRes: '资源（DB/Redis/MQ/配置…）',
+    optTests: '测试',
+    optMoves: '纯移动 / 仅 import 变化',
+    optTypes: '类型/接口',
+    optDepth: '邻居深度',
+    fitAria: '适应窗口',
+    fitTitle: '适应窗口',
+    graphAria: '改动关系图；可通过文件和审阅路径访问对应实体详情',
+    legendCalls: '── 调用',
+    legendTypeRefs: '- - 类型引用',
+    legendAdded: '── 本次新增',
+    busyLayout: '布局中…',
+    emptyGraph: '当前范围没有可显示的节点（检查「显示」选项）',
+
+    crumbBack: '返回',
+    crumbAll: '全部',
+    scopeCs: (t) => `改动集：${t}`,
+    scopeModule: (m) => `模块：${m}`,
+    scopeFile: (f) => `文件：${f}`,
+    scopeFocus: (n) => `聚焦：${n}`,
+    scopeSet: (l) => l ?? '选中集合',
+    scopeSearch: (s) => `搜索：${s}`,
+    scopeAll: '全部改动',
+
+    kinds: {
+      function: '函数', method: '方法', class: '类', interface: '接口', type: '类型', enum: '枚举', const: '常量/变量', namespace: '命名空间',
+      test: '测试', module: '模块级代码', db: '数据库表', redis: 'Redis', mq: '消息/队列', config: '配置项', route: 'HTTP 路由',
+      http: '外部 HTTP', job: '定时任务', dep: '依赖包', file: '文件',
+    },
+    statuses: { added: '新增', modified: '修改', deleted: '删除', moved: '移动', renamed: '重命名', context: '未改动', removed: '移除', unchanged: '未变', existing: '已有' },
+
+    openInEditor: '在编辑器中打开',
+    moduleCodeLabel: (name) => `${name} · 模块级代码`,
+    none: '无',
+    reviewedBtn: '已审阅',
+    questionBtn: '有疑问',
+    focusBtn: '聚焦关系图',
+    confMedium: '中置信',
+    confLow: '低置信',
+    confTitle: '按名字匹配，可能误报',
+    newCallPill: '新调用',
+    testPill: '测试',
+    movedPill: '已移动',
+    signatureChangedPill: '签名变更',
+    untestedPill: '无测试引用',
+    originalLocation: '原位置',
+    originalName: '原名称',
+    belongsToCs: '所属改动集',
+    signatureHeading: '签名变化',
+    signatureWarning: (n) => `签名已变，但下面有 ${n} 个调用方在本次 diff 中<b>没有被修改</b>，请确认它们仍然兼容。`,
+    usedByHeading: (n) => `被谁使用（${n}）`,
+    deletedHint: '已删除',
+    noCallersHint: '没有找到引用方（入口函数、框架回调、或仅通过依赖注入/反射使用）',
+    callersChangedHint: '本次也改动的调用方',
+    callersUnchangedHint: '未改动的调用方',
+    testsHint: '测试',
+    importedByHint: (n) => `被 ${n} 个文件 import`,
+    formerCallersHeading: (n) => `删除前的调用方（${n}）`,
+    unmodifiedWarning: '未修改!',
+    fileChanged: '文件有改动',
+    dependenciesHeading: (n) => `依赖 / 调用了（${n}）`,
+    resourceAccessHeading: (n) => `资源访问（${n}）`,
+    logsHeading: (n) => `日志（${n}）`,
+    codeChangesHeading: '代码改动',
+    codeChangesMovedHint: (f) => `内容未变，仅从 <code>${esc(f)}</code> 移动到当前位置`,
+    viewFileDiff: '查看整个文件的 diff',
+    contextFuncHint: '该函数本次未改动，因与改动代码存在调用关系而显示。',
+    diffAriaCode: '代码差异',
+    diffAriaFile: '文件差异',
+
+    configDeletedWarn: (n) => `该配置项已从配置文件中删除，但代码中仍有 ${n} 处引用：`,
+    configUndeclaredWarn: '新读取的配置项未在任何 <code>.env*</code> 示例文件中声明。',
+    definitionsHeading: (n) => `定义 / 结构变化（${n}）`,
+    accessingHeading: (n) => `访问方（${n}）`,
+    addedAccessHint: '本次新增的访问',
+    removedAccessHint: '本次移除的访问',
+    unchangedAccessHint: '改动代码中原有的访问',
+    resourceHeuristicHint: '资源由规则识别（按代码模式匹配），可能有遗漏或误报。',
+
+    fileTag: '文件',
+    fileRenamedPill: (sim) => `重命名 ${sim ?? ''}%`,
+    fileChangedEntsHeading: (n) => `改动实体（${n}）`,
+    involvedResHeading: '涉及资源',
+    fileBinaryHint: '二进制文件',
+    fileLockHint: '锁文件，已省略',
+    fileRenamedSameHint: '内容未变',
+    fileNoDiffHint: '无文本改动',
+    fileTruncatedHint: 'diff 过长已截断',
+    fileContextHint: '该文件本次未改动。',
+
+    moduleTag: '模块',
+    expandModuleBtn: '展开到实体视图',
+    moduleFilesHeading: (n) => `文件（${n}）`,
+    moduleEntsHeading: (n) => `改动实体（${n}）`,
+
+    addedPill: '本次新增',
+    removedPill: '本次移除',
+    existingPill: '已有',
+    occurrencesHeading: '出现位置',
+
+    riskLevelPill: (l) => `风险 ${l}`,
+    autoGroupedPill: '自动分组',
+    csEntitiesCount: (n) => `${n} 个实体`,
+    whyHeading: '为什么这样改',
+    reviewFocusHeading: '审阅重点',
+    readingOrderHeading: '建议阅读顺序',
+    readingOrderShortcut: '（j / k 逐个查看）',
+    relatedFilesHeading: '相关文件',
+    relatedResHeading: '相关资源',
+
+    srcRule: '规则',
+    sourceLabel: (s, r) => `来源：${s}${r ? ' · ' + r : ''}`,
+    relatedNodesHeading: '相关节点',
+    locationsHeading: '位置',
+
+    overviewTitleDefault: '改动总览',
+    aiSummaryTag: 'AI 摘要',
+    noAiOverview: '还没有 AI 分析。让 AI 助手读取 <code>digest.md</code> 并生成 <code>analysis.json</code> 后重新 render，即可得到改动意图、改动集分组和审阅顺序。',
+    gridFiles: '文件',
+    gridAdditions: '新增行',
+    gridDeletions: '删除行',
+    gridResources: '资源',
+    gridAddedEnts: '新增实体',
+    gridModEnts: '修改实体',
+    gridDelEnts: '删除实体',
+    gridMovedEnts: '移动/重命名',
+    keyRisksHeading: '重点风险',
+    reviewPathsHeading: '审阅路径',
+    commitsHeading: (n) => `提交（${n}）`,
+    operationsHeading: '操作',
+    operationsHints: '单击节点查看详情 · 双击节点聚焦其关系 · 双击模块展开 · <span class="kbd">/</span> 搜索 · <span class="kbd">j</span>/<span class="kbd">k</span> 在改动集内切换 · <span class="kbd">r</span> 标记已审阅 · <span class="kbd">Esc</span> 取消选择',
+    generatedMeta: (time, sec, tsFiles) => `生成于 ${time} · 耗时 ${sec}s${tsFiles ? ` · TS 引用分析 ${tsFiles} 个文件` : ''}`,
+
+    classPrefix: '类',
+    moduleFilesCount: (n) => `${n} 文件`,
+    unmodifiedModule: '未改动模块',
+    rawModuleCode: '模块级代码',
+    rawImportOnly: '仅 import',
+    rawTopLevel: 'import / 顶层语句',
+    signatureChangedCard: '签名变更',
+    reviewedCard: '已审',
+    questionCard: '有疑问',
+    undeclaredCard: '未声明',
+    stillReferencedCard: '仍被引用',
+  }
 };
-const STATUS_LABEL = { added: '新增', modified: '修改', deleted: '删除', moved: '移动', renamed: '重命名', context: '未改动', removed: '移除', unchanged: '未变', existing: '已有' };
+
+const RISK_TEXT = {
+  en: {
+    'signature-unchanged-callers': {
+      title: (p) => `${p.q} ${p.shape ? 'shape' : 'signature'} changed; ${p.n} ${p.shape ? 'implementers/extenders' : 'callers'} not modified`,
+      detail: (p) => `Old: ${p.old}\nNew: ${p.new}`,
+    },
+    'shape-type-refs': {
+      title: (p) => `${p.q} shape changed; used as a type by ${p.n} unmodified places`,
+      detail: (p) => `Old: ${p.old}\nNew: ${p.new}`,
+    },
+    'deleted-with-callers': { title: (p) => `${p.q} was deleted but its former callers were not modified` },
+    'large-change': { title: (p) => `${p.q} has a large change (+${p.add} −${p.del})`, detail: () => 'Worth a close look' },
+    'config-removed-still-used': { title: (p) => `Config ${p.name} was removed from config files but is still referenced in code` },
+    'config-undeclared': { title: (p) => `Newly read config ${p.name} is not declared in the .env example`, detail: () => 'The deployment environment may lack this variable' },
+    ddl: { title: (p) => (p.create ? `New table: ${p.name}` : `Database schema change: ${p.name}`) },
+    dependency: { title: (p) => `Dependency ${{ added: 'added', removed: 'removed', modified: 'upgraded' }[p.status] ?? 'changed'}: ${p.name}` },
+    untested: { title: (p) => `${p.n} added/modified functions have no direct test references` },
+    truncated: { title: (p) => `${p.path} diff was truncated (too large)` },
+  },
+  zh: {
+    'signature-unchanged-callers': {
+      title: (p) => `${p.q} ${p.shape ? '结构' : '签名'}变更，${p.n} 个${p.shape ? '实现/继承方' : '调用方'}未修改`,
+      detail: (p) => `旧: ${p.old}\n新: ${p.new}`,
+    },
+    'shape-type-refs': {
+      title: (p) => `${p.q} 结构变更，被 ${p.n} 处未修改代码作为类型引用`,
+      detail: (p) => `旧: ${p.old}\n新: ${p.new}`,
+    },
+    'deleted-with-callers': { title: (p) => `删除了 ${p.q}，但原调用方未修改` },
+    'large-change': { title: (p) => `${p.q} 改动量大（+${p.add} −${p.del}）`, detail: () => '建议重点审阅' },
+    'config-removed-still-used': { title: (p) => `配置项 ${p.name} 已从配置文件删除，代码中仍有引用` },
+    'config-undeclared': { title: (p) => `新读取的配置项 ${p.name} 未在 .env 示例中声明`, detail: () => '部署环境可能缺少该变量' },
+    ddl: { title: (p) => (p.create ? `新建表：${p.name}` : `数据库结构变更：${p.name}`) },
+    dependency: { title: (p) => `依赖${{ added: '新增', removed: '移除', modified: '升级' }[p.status] ?? '变更'}：${p.name}` },
+    untested: { title: (p) => `${p.n} 个新增/修改的函数没有测试直接引用` },
+    truncated: { title: (p) => `${p.path} diff 过大已截断` },
+  },
+};
+
+const t = (key, ...args) => {
+  const dict = MESSAGES[currentLang] ?? MESSAGES.en;
+  const val = dict[key] ?? MESSAGES.en[key];
+  if (typeof val === 'function') return val(...args);
+  return val ?? key;
+};
+
+const KIND_LABEL = new Proxy({}, {
+  get: (_, kind) => (MESSAGES[currentLang] ?? MESSAGES.en).kinds[kind] ?? kind,
+});
+const STATUS_LABEL = new Proxy({}, {
+  get: (_, status) => (MESSAGES[currentLang] ?? MESSAGES.en).statuses[status] ?? status,
+});
+
+const srcLabel = (r) => (r.src === 'rule' ? t('srcRule') : r.src);
+// Rule risks carry structured `params`; render them in the active language (falls back to the stored Chinese text).
+const riskTitle = (r) => (r.src === 'rule' && r.params && RISK_TEXT[currentLang]?.[r.rule]?.title?.(r.params)) || r.title;
+const riskDetail = (r) => (r.src === 'rule' && r.params && RISK_TEXT[currentLang]?.[r.rule]?.detail?.(r.params)) || r.detail;
+
+function csTitle(cs) {
+  if (!cs) return '';
+  if (cs.id === 'cs-rest') return t('csRestTitle');
+  if (cs.id === 'moves') return t('csMovesTitle');
+  if (cs.id === 'tests') return t('csTestsTitle');
+  return cs.title ?? '';
+}
+function csSummary(cs) {
+  if (!cs) return '';
+  if (cs.id === 'cs-rest') return t('csRestSummary');
+  if (cs.id === 'moves') return t('csMovesSummary');
+  if (cs.id === 'tests') return t('csTestsSummary', cs.entities.length);
+  if (cs.auto && cs.id?.startsWith('m')) return t('csModSummary', cs.entities.length);
+  return cs.summary ?? '';
+}
+
 const OP_COLOR = { read: 'accent', write: 'orange', publish: 'purple', consume: 'teal', define: 'mute', schema: 'del', handle: 'add' };
 const SHAPE_KINDS = new Set(['interface', 'type', 'enum']);
 // DOM badges and graph SVGs use the same icon paths and semantic color tokens.
@@ -127,20 +612,20 @@ const changeSets = (() => {
     const sets = A.changeSets.map((cs, i) => ({ ...cs, id: cs.id ?? `cs${i + 1}`, entities: known(cs.entities), files: known(cs.files), resources: known(cs.resources), reviewOrder: known(cs.reviewOrder) }));
     const placed = new Set(sets.flatMap((s) => s.entities));
     const rest = reviewable.filter((e) => !placed.has(e.sid)).map((e) => e.sid);
-    if (rest.length) sets.push({ id: 'cs-rest', title: '其他改动', summary: '未被 AI 归入任何改动集的实体', entities: rest, auto: true });
+    if (rest.length) sets.push({ id: 'cs-rest', entities: rest, auto: true });
     return sets;
   }
   const byMod = new Map();
   for (const e of reviewable) (byMod.get(e.module) ?? byMod.set(e.module, []).get(e.module)).push(e.sid);
-  const sets = [...byMod].sort((a, b) => b[1].length - a[1].length).map(([m, ents], i) => ({ id: `m${i}`, title: m, summary: `${ents.length} 个改动实体`, entities: ents, auto: true }));
+  const sets = [...byMod].sort((a, b) => b[1].length - a[1].length).map(([m, ents], i) => ({ id: `m${i}`, title: m, entities: ents, auto: true }));
   const moves = F.entities.filter(isTrivial).map((e) => e.sid);
-  if (moves.length) sets.push({ id: 'moves', title: '纯移动 / 仅 import 变化', summary: '内容未变仅位置变化，或只改了 import', entities: moves, auto: true, risk: 'low' });
+  if (moves.length) sets.push({ id: 'moves', entities: moves, auto: true, risk: 'low' });
   const tests = F.entities.filter((e) => e.isTest).map((e) => e.sid);
-  if (tests.length) sets.push({ id: 'tests', title: '测试', summary: `${tests.length} 个测试相关实体`, entities: tests, auto: true, risk: 'low' });
+  if (tests.length) sets.push({ id: 'tests', entities: tests, auto: true, risk: 'low' });
   return sets;
 })();
 const csById = new Map(changeSets.map((c) => [c.id, c]));
-const risks = [...(A.risks ?? []).map((r) => ({ ...r, src: 'AI' })), ...F.risks.map((r) => ({ ...r, src: '规则' }))];
+const risks = [...(A.risks ?? []).map((r) => ({ ...r, src: 'AI' })), ...F.risks.map((r) => ({ ...r, src: 'rule' }))];
 
 // ---------------------------------------------------------------- persistent state
 const store = JSON.parse(storage.getItem(LS_KEY) || '{}');
@@ -156,15 +641,21 @@ const state = {
 };
 
 // ---------------------------------------------------------------- header
-$('#title').textContent = A.title || `${F.meta.repoName} · ${F.meta.range.label}`;
-$('#title').title = F.meta.range.label;
-$('#stats').innerHTML = `<span>${F.stats.files} 文件</span><span><b class="a">+${F.stats.additions}</b> <b class="d">−${F.stats.deletions}</b></span><span>${F.entities.length} 实体</span><span>${F.resources.length} 资源</span>`;
+function renderStats() {
+  $('#stats').innerHTML = t('stats', F.stats.files, F.stats.additions, F.stats.deletions, F.entities.length, F.resources.length);
+}
 function updateProgress() {
   const done = reviewable.filter((e) => store.reviewed[e.sid] === 'ok').length;
   const pct = reviewable.length ? Math.round((done / reviewable.length) * 100) : 0;
   $('#progress i').style.width = pct + '%';
-  $('#progress span').textContent = `已审 ${done}/${reviewable.length}`;
+  $('#progress span').textContent = t('progressText', done, reviewable.length);
 }
+function renderHeader() {
+  $('#title').textContent = A.title || `${F.meta.repoName} · ${F.meta.range.label}`;
+  $('#title').title = F.meta.range.label;
+  renderStats();
+}
+renderHeader();
 
 // ---------------------------------------------------------------- helpers
 const openHref = (file, line) => {
@@ -176,9 +667,10 @@ const openHref = (file, line) => {
     default: return null;
   }
 };
-const pathLink = (file, line) => `<button type="button" class="path" data-open="${esc(file)}" data-line="${line || ''}" title="在编辑器中打开">${esc(file)}${line ? ':' + line : ''}</button>`;
+const pathLink = (file, line) => `<button type="button" class="path" data-open="${esc(file)}" data-line="${line || ''}" title="${esc(t('openInEditor'))}">${esc(file)}${line ? ':' + line : ''}</button>`;
 const pill = (status, text) => `<span class="pill st-${status}">${esc(text ?? STATUS_LABEL[status] ?? status)}</span>`;
-const nodeName = (n) => n.nt === 'resource' ? n.name : n.kind === 'module' ? `${n.name} · 模块级代码` : n.qname;
+const nodeName = (n) => n.nt === 'resource' ? n.name : n.kind === 'module' ? t('moduleCodeLabel', n.name) : n.qname;
+
 const chip = (sid) => {
   const n = nodes.get(sid) || files.get(sid);
   if (!n) return `<code>${esc(sid)}</code>`;
@@ -267,34 +759,44 @@ function renderLeft() {
   const body = $('#leftBody');
   if (leftTab === 'sets') {
     const csCur = state.scope.type === 'cs' ? state.scope.key : null;
-    body.innerHTML = (A.changeSets?.length ? '' : `<div class="hint" style="padding:6px 12px">未提供 AI 分析，按模块自动分组</div>`) +
+    body.innerHTML = (A.changeSets?.length ? '' : `<div class="hint" style="padding:6px 12px">${t('noAiAnalysis')}</div>`) +
       changeSets.map((cs, i) => {
         const rv = cs.entities.filter((s) => store.reviewed[s] === 'ok').length;
         const tot = cs.entities.length;
         return `<button type="button" class="cs ${csCur === cs.id ? 'on' : ''}" data-cs="${esc(cs.id)}" aria-pressed="${csCur === cs.id}">
-          <span class="h"><span class="n">${i + 1}</span><span class="t">${esc(cs.title)}</span>${cs.risk ? `<span class="pill lv-${esc(cs.risk)}">${esc(cs.risk)}</span>` : ''}</span>
-          ${cs.summary ? `<span class="s">${esc(plain(cs.summary))}</span>` : ''}
-          <span class="m"><span>${tot} 实体</span>${cs.files?.length ? `<span>${cs.files.length} 文件</span>` : ''}<span class="${rv === tot && tot ? 'done' : ''}">${icon('check')} ${rv}/${tot}</span></span>
+          <span class="h"><span class="n">${i + 1}</span><span class="t">${esc(csTitle(cs))}</span>${cs.risk ? `<span class="pill lv-${esc(cs.risk)}">${esc(cs.risk)}</span>` : ''}</span>
+          ${csSummary(cs) ? `<span class="s">${esc(plain(csSummary(cs)))}</span>` : ''}
+          <span class="m"><span>${t('csEntities', tot)}</span>${cs.files?.length ? `<span>${t('csFiles', cs.files.length)}</span>` : ''}<span class="${rv === tot && tot ? 'done' : ''}">${icon('check')} ${rv}/${tot}</span></span>
         </button>`;
       }).join('');
   } else if (leftTab === 'files') {
     if (!$('#ftree', body)) {
       body.innerHTML = `<div class="ftools">
-        <div class="fsearch"><input id="fq" name="file-search" aria-label="筛选文件路径" placeholder="筛选文件路径…" autocomplete="off" spellcheck="false"><button id="fexp" aria-label="展开全部目录" title="展开全部目录">${icon('chevrons-up-down')}</button><button id="fcol" aria-label="收起全部目录" title="收起全部目录">${icon('chevrons-down-up')}</button></div>
+        <div class="fsearch"><input id="fq" name="file-search" aria-label="${esc(t('fileSearchAria'))}" placeholder="${esc(t('fileSearchPlaceholder'))}" autocomplete="off" spellcheck="false"><button id="fexp" aria-label="${esc(t('fileExpandAll'))}" title="${esc(t('fileExpandAll'))}">${icon('chevrons-up-down')}</button><button id="fcol" aria-label="${esc(t('fileCollapseAll'))}" title="${esc(t('fileCollapseAll'))}">${icon('chevrons-down-up')}</button></div>
         <div id="fchips" class="fchips"></div></div><div id="ftree" class="tree"></div>`;
       $('#fq', body).value = fileFilter.q;
+    } else {
+      const fq = $('#fq', body);
+      if (fq) { fq.setAttribute('aria-label', t('fileSearchAria')); fq.placeholder = t('fileSearchPlaceholder'); }
+      const exp = $('#fexp', body);
+      if (exp) { exp.setAttribute('aria-label', t('fileExpandAll')); exp.title = t('fileExpandAll'); }
+      const col = $('#fcol', body);
+      if (col) { col.setAttribute('aria-label', t('fileCollapseAll')); col.title = t('fileCollapseAll'); }
     }
     renderFileTree();
   } else if (leftTab === 'risks') {
-    body.innerHTML = risks.length ? risks.map((r, i) => `<button type="button" class="risk" data-risk="${i}">
-      <span><span class="pill lv-${r.level}">${r.level}</span> <span class="t">${esc(r.title)}</span> <span class="src">${r.src}</span></span>
-      ${r.detail ? `<span class="d">${esc(r.detail)}</span>` : ''}</button>`).join('') : '<div class="hint" style="padding:12px">没有发现风险项</div>';
+    body.innerHTML = risks.length ? risks.map((r, i) => {
+      const sName = srcLabel(r);
+      return `<button type="button" class="risk" data-risk="${i}">
+        <span><span class="pill lv-${r.level}">${r.level}</span> <span class="t">${esc(riskTitle(r))}</span> <span class="src">${sName}</span></span>
+        ${riskDetail(r) ? `<span class="d">${esc(riskDetail(r))}</span>` : ''}</button>`;
+    }).join('') : `<div class="hint" style="padding:12px">${t('noRisksFound')}</div>`;
   } else if (leftTab === 'res') {
     const byKind = new Map();
     for (const r of F.resources) (byKind.get(r.kind) ?? byKind.set(r.kind, []).get(r.kind)).push(r);
     body.innerHTML = [...byKind].map(([k, list]) => `<div class="group-h">${icon(KIND_ICON[k])} ${KIND_LABEL[k] ?? k} (${list.length})</div>` +
       `<div class="tree">${list.map((r) => `<button type="button" class="row" data-sel="${r.sid}"><span class="nm">${esc(r.name)}</span>${pill(r.status)}${r.stillReferenced?.length || r.undeclared ? icon('triangle-alert') : ''}</button>`).join('')}</div>`).join('') ||
-      '<div class="hint" style="padding:12px">未检测到资源</div>';
+      `<div class="hint" style="padding:12px">${t('noResFound')}</div>`;
   }
 }
 function renderFileTree() {
@@ -328,7 +830,7 @@ function renderFileTree() {
       } else {
         const cur = state.scope.type === 'file' && state.scope.key === v.id;
         const st = v.status === 'renamed' ? 'moved' : v.status;
-        rows.push(`<button type="button" class="row ${cur ? 'on' : ''}" data-file="${v.id}" aria-pressed="${cur}" style="padding-left:${8 + depth * 14 + 14}px" title="${esc(v.path)}${v.oldPath ? '\n原路径：' + esc(v.oldPath) : ''}">
+        rows.push(`<button type="button" class="row ${cur ? 'on' : ''}" data-file="${v.id}" aria-pressed="${cur}" style="padding-left:${8 + depth * 14 + 14}px" title="${esc(v.path)}${v.oldPath ? esc(t('fileOriginalPath', v.oldPath)) : ''}">
           <span class="pill st-${st}">${{ added: 'A', modified: 'M', deleted: 'D', renamed: 'R', copied: 'C' }[v.status] ?? '?'}</span>
           <span class="nm">${esc(k)}</span><span class="num">+${v.additions} −${v.deletions}</span></button>`);
       }
@@ -336,8 +838,8 @@ function renderFileTree() {
   };
   walk(tree, 0, '');
   const hidden = F.files.length - shown.length;
-  $('#ftree').innerHTML = (rows.join('') || '<div class="hint" style="padding:10px 12px">没有匹配的文件</div>')
-    + (hidden ? `<div class="hint fhidden" role="status">已隐藏 ${hidden} 个文件</div>` : '');
+  $('#ftree').innerHTML = (rows.join('') || `<div class="hint" style="padding:10px 12px">${t('fileNoMatches')}</div>`)
+    + (hidden ? `<div class="hint fhidden" role="status">${t('fileHiddenCount', hidden)}</div>` : '');
   if (focusKey) {
     [...$('#leftBody').querySelectorAll('button')].find((el) => Object.entries(focusKey).some(([key, value]) => value !== undefined && el.dataset[key] === value))?.focus({ preventScroll: true });
   }
@@ -351,15 +853,15 @@ const diffExts = (() => {
 function typeChipsHtml() {
   return diffExts.map(([k, n]) => {
     const off = fileFilter.hide.has(k);
-    return `<button class="fchip ${off ? 'off' : ''}" data-ft="${esc(k)}" aria-pressed="${!off}" title="${off ? '点击显示' : '点击隐藏'}">${esc(k)}<i>${n}</i></button>`;
+    return `<button class="fchip ${off ? 'off' : ''}" data-ft="${esc(k)}" aria-pressed="${!off}" title="${off ? esc(t('chipShow')) : esc(t('chipHide'))}">${esc(k)}<i>${n}</i></button>`;
   }).join('');
 }
 function syncTypeFilterUi() {
   $('#gchips').innerHTML = typeChipsHtml();
   const hidden = diffExts.filter(([k]) => fileFilter.hide.has(k)).map(([k]) => k);
   // keep the button short; the full list goes into the tooltip
-  $('#ftypeLabel').textContent = hidden.length ? `文件类型 · 已隐藏 ${hidden.length}` : '文件类型';
-  $('#ftypeSum').title = hidden.length ? `已隐藏：${hidden.join(' ')}` : '按文件后缀筛选';
+  $('#ftypeLabel').textContent = hidden.length ? t('ftypeHidden', hidden.length) : t('ftypeLabel');
+  $('#ftypeSum').title = hidden.length ? t('ftypeSumHiddenTitle', hidden.join(' ')) : t('ftypeSumTitle');
   $('#ftypeSum').classList.toggle('active', hidden.length > 0);
 }
 function toggleFileType(k) {
@@ -408,7 +910,7 @@ $('#leftBody').onclick = (ev) => {
   if (r) {
     const risk = risks[+r.dataset.risk];
     const ents = (risk.entities ?? []).filter((s) => nodes.has(s));
-    if (ents.length) go({ type: 'set', key: ents, label: risk.title }, 'entity');
+    if (ents.length) go({ type: 'set', key: ents, label: riskTitle(risk) }, 'entity');
     showRisk(risk);
     return;
   }
@@ -497,18 +999,18 @@ function measure(lines, font = `12px ${UI_FONT}`) {
 }
 
 function entityCard(n, inClass) {
-  const raw = n.kind === 'module' ? '模块级代码' : inClass && n.parent ? n.name : n.qname;
+  const raw = n.kind === 'module' ? t('rawModuleCode') : inClass && n.parent ? n.name : n.qname;
   const name = raw.length > 48 ? raw.slice(0, 46) + '…' : raw;
   const isCtx = n.nt === 'context';
   const meta = [];
-  if (isCtx) meta.push({ t: `${KIND_LABEL[n.kind] ?? n.kind}  ·  未改动`, c: color('faint') });
+  if (isCtx) meta.push({ t: `${KIND_LABEL[n.kind] ?? n.kind}  ·  ${STATUS_LABEL['context']}`, c: color('faint') });
   else {
-    meta.push(st(n.status), dot, { t: n.kind === 'module' ? (n.importOnly ? '仅 import' : 'import / 顶层语句') : KIND_LABEL[n.kind] ?? n.kind });
-    if (n.moved && n.status !== 'moved') meta.push(dot, st('moved', '已移动'));
+    meta.push(st(n.status), dot, { t: n.kind === 'module' ? (n.importOnly ? t('rawImportOnly') : t('rawTopLevel')) : KIND_LABEL[n.kind] ?? n.kind });
+    if (n.moved && n.status !== 'moved') meta.push(dot, st('moved', t('movedPill')));
     if (n.status !== 'moved' && (n.additions || n.deletions)) meta.push(dot, ...churn(n.additions, n.deletions));
-    if (n.signatureChanged) meta.push(dot, { t: '签名变更', c: color('orange'), b: true });
-    if (store.reviewed[n.sid] === 'ok') meta.push(dot, { t: '已审', c: color('add') });
-    if (store.reviewed[n.sid] === 'q') meta.push(dot, { t: '有疑问', c: color('orange') });
+    if (n.signatureChanged) meta.push(dot, { t: t('signatureChangedCard'), c: color('orange'), b: true });
+    if (store.reviewed[n.sid] === 'ok') meta.push(dot, { t: t('reviewedCard'), c: color('add') });
+    if (store.reviewed[n.sid] === 'q') meta.push(dot, { t: t('questionCard'), c: color('orange') });
   }
   return { name, meta, ...card({ name, meta, kind: n.kind, bar: isCtx ? null : color(STATUS_INK[n.status] ?? 'faint'), faded: isCtx, pill: n.kind === 'const' }) };
 }
@@ -516,7 +1018,7 @@ function entityCard(n, inClass) {
 function resNode(n) {
   const name = n.name.length > 40 ? n.name.slice(0, 38) + '…' : n.name;
   const meta = [st(n.status), dot, { t: KIND_LABEL[n.kind] ?? n.kind }];
-  if (n.stillReferenced?.length || n.undeclared) meta.push(dot, { t: n.undeclared ? '未声明' : '仍被引用', c: color('del'), b: true });
+  if (n.stillReferenced?.length || n.undeclared) meta.push(dot, { t: n.undeclared ? t('undeclaredCard') : t('stillReferencedCard'), c: color('del'), b: true });
   const c = card({ name, meta, kind: n.kind, pill: true, faded: n.status === 'unchanged' });
   return { group: 'nodes', data: {
     id: n.sid, label: c.label, img: c.img, w: c.w, h: c.h, mx: c.mx, r: c.h / 2,
@@ -546,7 +1048,7 @@ function buildEntityElements() {
       const ck = `${n.file}#${n.parent}`;
       const ce = classEntity.get(ck);
       const cid = ce ? ce.sid : `cls:${ck}`;
-      if (!ce && !parents.has(cid)) parents.set(cid, { id: cid, label: `类 · ${n.parent}`, kind: 'class-virtual', status: 'context', parent: fileKey });
+      if (!ce && !parents.has(cid)) parents.set(cid, { id: cid, label: `${t('classPrefix')} · ${n.parent}`, kind: 'class-virtual', status: 'context', parent: fileKey });
       parent = cid;
     }
     const isCompound = n.kind === 'class' && hasChild.has(`${n.file}#${n.name}`);
@@ -561,7 +1063,7 @@ function buildEntityElements() {
     };
     if (isCompound) {
       const meta = c.meta.map((m) => m.t).join('');
-      Object.assign(data, { label: `类 · ${c.name}     ${meta}`, border: color(STATUS_INK[n.status] ?? 'line') });
+      Object.assign(data, { label: `${t('classPrefix')} · ${c.name}     ${meta}`, border: color(STATUS_INK[n.status] ?? 'line') });
     } else {
       Object.assign(data, { label: c.label, img: c.img, w: c.w, h: c.h, mx: c.mx });
       if (n.kind === 'const') data.r = c.h / 2;
@@ -634,8 +1136,8 @@ function buildModuleElements() {
     if (!m.changed && !state.opt.context) continue;
     const dominant = m.changed ? (m.st.added > (m.st.modified ?? 0) + (m.st.deleted ?? 0) ? 'added' : m.st.deleted > (m.st.modified ?? 0) ? 'deleted' : 'modified') : 'context';
     const meta = m.changed
-      ? [{ t: `${m.files.size} 文件` }, dot, ...churn(m.add, m.del), ...Object.entries(m.st).flatMap(([k, v]) => [dot, st(k, `${STATUS_LABEL[k]} ${v}`)])]
-      : [{ t: '未改动模块', c: color('faint') }];
+      ? [{ t: t('moduleFilesCount', m.files.size) }, dot, ...churn(m.add, m.del), ...Object.entries(m.st).flatMap(([k, v]) => [dot, st(k, `${STATUS_LABEL[k]} ${v}`)])]
+      : [{ t: t('unmodifiedModule'), c: color('faint') }];
     const c = card({ name: m.name, meta, kind: 'module', bar: m.changed ? color(STATUS_INK[dominant]) : null, faded: !m.changed });
     els.push({ group: 'nodes', data: { id: m.id, label: c.label, img: c.img, w: c.w, h: c.h, mx: c.mx, border: color('line'), bs: m.changed ? 'solid' : 'dashed', tc: color(m.changed ? 'text' : 'mute'), mod: m.name }, classes: `card mod ${m.changed ? '' : 'context'}` });
   }
@@ -703,9 +1205,48 @@ const cy = cytoscape({ container: $('#cy'), minZoom: 0.05, maxZoom: 3, style: gr
 function syncThemeButtons() {
   document.querySelectorAll('[data-theme-mode]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.themeMode === window.patchvistaTheme.get())));
 }
+function syncLangButtons() {
+  document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === currentLang)));
+}
+function setLang(lang) {
+  if (lang !== 'en' && lang !== 'zh') return;
+  currentLang = lang;
+  storage.setItem(LANG_KEY, lang);
+  applyLang();
+}
+function updateStaticHtml() {
+  for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-attr]')) {
+    for (const pair of el.dataset.i18nAttr.split(';')) {
+      const [attr, key] = pair.split(':');
+      el.setAttribute(attr, t(key));
+    }
+  }
+  renderStats();
+}
+
+function applyLang() {
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  syncLangButtons();
+  updateStaticHtml();
+  updateProgress();
+  syncTypeFilterUi();
+  renderLeft();
+  renderCrumbs();
+  renderLegend();
+  cy.batch(() => {
+    for (const element of state.view === 'module' ? buildModuleElements() : buildEntityElements()) cy.$id(element.data.id).data(element.data);
+  });
+  refreshDetail();
+}
+
 $('#themeModes').addEventListener('click', (event) => {
   const button = event.target.closest('[data-theme-mode]');
   if (button) window.patchvistaTheme.set(button.dataset.themeMode);
+});
+$('#langModes').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-lang]');
+  if (button) setLang(button.dataset.lang);
 });
 window.addEventListener('patchvista:theme', () => {
   palette = readPalette();
@@ -718,6 +1259,7 @@ window.addEventListener('patchvista:theme', () => {
   renderLegend();
 });
 syncThemeButtons();
+syncLangButtons();
 
 const elk = new ELK();
 let layoutToken = 0;
@@ -776,7 +1318,7 @@ function redraw() {
   cy.elements().remove();
   cy.add(els);
   $('#empty').hidden = els.length > 0;
-  $('#empty').textContent = '当前范围没有可显示的节点（检查「显示」选项）';
+  $('#empty').textContent = t('emptyGraph');
   document.querySelectorAll('#viewSeg button').forEach((b) => {
     b.classList.toggle('on', b.dataset.view === state.view);
     b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
@@ -794,31 +1336,27 @@ function renderLegend() {
     : [];
   if (items.length) items.push('<span class="sep"></span>');
   items.push(...statuses.map((s) => `<span><i style="background:var(--${STATUS_INK[s]})"></i>${STATUS_LABEL[s]}</span>`));
-  items.push('<span class="sep"></span><span>── 调用</span><span>- - 类型引用</span><span style="color:var(--add)">── 本次新增</span>');
+  items.push(`<span class="sep"></span><span>${t('legendCalls')}</span><span>${t('legendTypeRefs')}</span><span style="color:var(--add)">${t('legendAdded')}</span>`);
   if (state.opt.res) items.push(...['read', 'write', 'publish', 'consume'].map((o) => `<span style="color:var(--${OP_COLOR[o]})">── ${o}</span>`));
   $('#legend').innerHTML = items.join('');
 }
 
 function scopeLabel(sc) {
   switch (sc.type) {
-    case 'cs': return `改动集：${csById.get(sc.key)?.title}`;
-    case 'module': return `模块：${sc.key}`;
-    case 'file': return `文件：${files.get(sc.key)?.path.split('/').pop()}`;
-    case 'node': return `聚焦：${nodeName(nodes.get(sc.key))}`;
-    case 'set': return sc.label ?? '选中集合';
-    case 'search': return `搜索：${sc.label}`;
-    default: return '全部改动';
+    case 'cs': return t('scopeCs', csTitle(csById.get(sc.key) || {}));
+    case 'module': return t('scopeModule', sc.key);
+    case 'file': return t('scopeFile', files.get(sc.key)?.path.split('/').pop());
+    case 'node': return t('scopeFocus', nodeName(nodes.get(sc.key)));
+    case 'set': return t('scopeSet', sc.label);
+    case 'search': return t('scopeSearch', sc.label);
+    default: return t('scopeAll');
   }
 }
 function renderCrumbs() {
-  const back = state.history.length ? `<button type="button" data-back>${icon('arrow-left')}返回</button><span>·</span>` : '';
-  const all = state.scope.type !== 'all' ? `<button type="button" data-all>全部</button><span>/</span>` : '';
+  const back = state.history.length ? `<button type="button" data-back>${icon('arrow-left')}${t('crumbBack')}</button><span>·</span>` : '';
+  const all = state.scope.type !== 'all' ? `<button type="button" data-all>${t('crumbAll')}</button><span>/</span>` : '';
   $('#crumbs').innerHTML = `${back}${all}<span class="cur">${esc(scopeLabel(state.scope))}</span>`;
 }
-$('#crumbs').onclick = (ev) => {
-  if (ev.target.closest('[data-back]')) { const h = state.history.pop(); state.scope = h.scope; state.view = h.view; redraw(); renderLeft(); }
-  if (ev.target.closest('[data-all]')) go({ type: 'all' });
-};
 
 function go(scope, view) {
   state.history.push({ scope: state.scope, view: state.view });
@@ -859,6 +1397,22 @@ cy.on('tap', (ev) => { if (ev.target === cy) { state.selected = null; cy.element
 
 // ---------------------------------------------------------------- right panel
 const detail = $('#detail');
+let currentDetail = { type: 'overview' };
+
+function refreshDetail() {
+  switch (currentDetail.type) {
+    case 'entity': showEntity(currentDetail.arg); break;
+    case 'resource': showResource(currentDetail.arg); break;
+    case 'file': showFile(currentDetail.arg); break;
+    case 'contextFile': showContextFile(currentDetail.arg); break;
+    case 'module': showModule(currentDetail.arg); break;
+    case 'edge': showEdge(currentDetail.arg); break;
+    case 'cs': showChangeSet(currentDetail.arg); break;
+    case 'risk': showRisk(currentDetail.arg); break;
+    default: showOverview(); break;
+  }
+}
+
 function select(sid, center) {
   state.selected = sid;
   const n = nodes.get(sid) || files.get(sid);
@@ -872,21 +1426,22 @@ function select(sid, center) {
   if (center) { const el = cy.$id(sid); if (el.length) cy.animate({ center: { eles: el }, zoom: Math.max(cy.zoom(), 0.8) }, { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 }); }
 }
 
-function refList(list, render) { return list.length ? `<ul class="refs">${list.map(render).join('')}</ul>` : '<div class="hint">无</div>'; }
+function refList(list, render) { return list.length ? `<ul class="refs">${list.map(render).join('')}</ul>` : `<div class="hint">${t('none')}</div>`; }
 const refRow = (attrs, content) => `<li><button type="button" class="ref-row" ${attrs}>${content}</button></li>`;
 function nodeRow(sid, extra = '', lineText = '') {
   const n = nodes.get(sid);
   if (!n) return '';
   const st = n.nt === 'context' ? 'context' : n.status;
-  return refRow(`data-sel="${sid}"`, `${kindBadge(n.kind)}<span class="nm">${esc(nodeName(n))}</span>${pill(st)}${n.isTest ? '<span class="pill st-context">测试</span>' : ''}${extra}${lineText ? `<span class="ln">${esc(lineText)}</span>` : ''}`);
+  return refRow(`data-sel="${sid}"`, `${kindBadge(n.kind)}<span class="nm">${esc(nodeName(n))}</span>${pill(st)}${n.isTest ? `<span class="pill st-context">${t('testPill')}</span>` : ''}${extra}${lineText ? `<span class="ln">${esc(lineText)}</span>` : ''}`);
 }
 function reviewButtons(sid) {
   const v = store.reviewed[sid];
-  return `<div class="btns"><button class="btn ${v === 'ok' ? 'on' : ''}" data-review="ok" aria-pressed="${v === 'ok'}">${icon('check')}已审阅 <span class="kbd">r</span></button><button class="btn q ${v === 'q' ? 'on' : ''}" data-review="q" aria-pressed="${v === 'q'}">${icon('circle-help')}有疑问</button>
-    <button class="btn" data-focus="${sid}">${icon('network')}聚焦关系图</button></div>`;
+  return `<div class="btns"><button class="btn ${v === 'ok' ? 'on' : ''}" data-review="ok" aria-pressed="${v === 'ok'}">${icon('check')}${t('reviewedBtn')} <span class="kbd">r</span></button><button class="btn q ${v === 'q' ? 'on' : ''}" data-review="q" aria-pressed="${v === 'q'}">${icon('circle-help')}${t('questionBtn')}</button>
+    <button class="btn" data-focus="${sid}">${icon('network')}${t('focusBtn')}</button></div>`;
 }
 
 function showEntity(n) {
+  currentDetail = { type: 'entity', arg: n };
   const isCtx = n.nt === 'context';
   const inc = (inE.get(n.sid) ?? []).filter((e) => e.et === 'ref');
   const out = (outE.get(n.sid) ?? []).filter((e) => e.et === 'ref');
@@ -898,73 +1453,74 @@ function showEntity(n) {
   const tests = inc.filter((e) => nodes.get(e.s).isTest);
   const refLine = (e) => e.refs?.[0] ? `${e.refs[0].file.split('/').pop()}:${e.refs[0].line}  ${e.refs[0].text ?? ''}` : '';
   const kindsTag = (e) => { const k = e.kinds.filter((x) => x !== 'call'); return k.length ? `<span class="hint">${esc(k.join(','))}</span>` : ''; };
-  const confTag = (e) => e.confidence && e.confidence !== 'high' ? `<span class="pill lv-low" title="按名字匹配，可能误报">${e.confidence === 'medium' ? '中置信' : '低置信'}</span>` : '';
-  const newTag = (e) => e.status === 'added' ? '<span class="pill st-added">新调用</span>' : '';
+  const confTag = (e) => e.confidence && e.confidence !== 'high' ? `<span class="pill lv-low" title="${esc(t('confTitle'))}">${e.confidence === 'medium' ? t('confMedium') : t('confLow')}</span>` : '';
+  const newTag = (e) => e.status === 'added' ? `<span class="pill st-added">${t('newCallPill')}</span>` : '';
   const sigWarn = n.signatureChanged && callersUnchanged.length && !SHAPE_KINDS.has(n.kind);
 
   let html = `<h2>${kindBadge(n.kind)}<span class="kindtag">${esc(KIND_LABEL[n.kind] ?? n.kind)}</span>${esc(nodeName(n))}</h2>
-    <div class="meta">${pill(isCtx ? 'context' : n.status)}${n.moved && n.status !== 'moved' ? pill('moved', '已移动') : ''}${n.signatureChanged ? '<span class="pill lv-medium">签名变更</span>' : ''}
-      ${n.tested === false ? '<span class="pill lv-low">无测试引用</span>' : ''}${!isCtx && (n.additions || n.deletions) ? `<span class="mono"><b style="color:var(--add)">+${n.additions}</b> <b style="color:var(--del)">−${n.deletions}</b></span>` : ''}</div>
+    <div class="meta">${pill(isCtx ? 'context' : n.status)}${n.moved && n.status !== 'moved' ? pill('moved', t('movedPill')) : ''}${n.signatureChanged ? `<span class="pill lv-medium">${t('signatureChangedPill')}</span>` : ''}
+      ${n.tested === false ? `<span class="pill lv-low">${t('untestedPill')}</span>` : ''}${!isCtx && (n.additions || n.deletions) ? `<span class="mono"><b style="color:var(--add)">+${n.additions}</b> <b style="color:var(--del)">−${n.deletions}</b></span>` : ''}</div>
     <div class="meta">${pathLink(n.file, n.line ?? n.old?.line)}</div>
-    ${n.oldFile ? `<div class="meta">原位置 <span class="mono">${esc(n.oldFile)}${n.old?.line ? ':' + n.old.line : ''}</span></div>` : ''}
-    ${n.oldName ? `<div class="meta">原名称 <code>${esc(n.oldName)}</code></div>` : ''}
-    ${cs.length ? `<div class="meta">所属改动集 ${cs.map((c) => `<button type="button" class="chip" data-cs="${esc(c.id)}">${esc(c.title)}</button>`).join(' ')}</div>` : ''}
+    ${n.oldFile ? `<div class="meta">${t('originalLocation')} <span class="mono">${esc(n.oldFile)}${n.old?.line ? ':' + n.old.line : ''}</span></div>` : ''}
+    ${n.oldName ? `<div class="meta">${t('originalName')} <code>${esc(n.oldName)}</code></div>` : ''}
+    ${cs.length ? `<div class="meta">${t('belongsToCs')} ${cs.map((c) => `<button type="button" class="chip" data-cs="${esc(c.id)}">${esc(csTitle(c))}</button>`).join(' ')}</div>` : ''}
     ${note ? `<div class="note ai">${md(note).replace(/^<div class="md"><p>|<\/p><\/div>$/g, '')}</div>` : ''}
     ${isCtx ? '' : reviewButtons(n.sid)}`;
   if (n.decorators?.length) html += `<div class="meta">${n.decorators.map((d) => `<code>@${esc(d.name)}${d.args.length ? `(${esc(d.args.join(', ').slice(0, 80))})` : ''}</code>`).join(' ')}</div>`;
-  if (n.signatureChanged) html += `<h3>签名变化</h3><div class="sig"><div class="o">${esc(n.old.signature)}</div><div class="n">${esc(n.signature)}</div></div>`;
-  if (sigWarn) html += `<div class="warn">${icon('triangle-alert')} 签名已变，但下面有 ${callersUnchanged.length} 个调用方在本次 diff 中<b>没有被修改</b>，请确认它们仍然兼容。</div>`;
+  if (n.signatureChanged) html += `<h3>${t('signatureHeading')}</h3><div class="sig"><div class="o">${esc(n.old.signature)}</div><div class="n">${esc(n.signature)}</div></div>`;
+  if (sigWarn) html += `<div class="warn">${icon('triangle-alert')} ${t('signatureWarning', callersUnchanged.length)}</div>`;
 
-  html += `<h3>被谁使用（${inc.length}）</h3>`;
-  if (!inc.length && !isCtx && !n.isTest) html += `<div class="hint">${n.status === 'deleted' ? '已删除' : n.kind === 'test' ? '' : '没有找到引用方（入口函数、框架回调、或仅通过依赖注入/反射使用）'}</div>`;
-  if (callersChanged.length) html += `<div class="hint">本次也改动的调用方</div>` + refList(callersChanged, (e) => nodeRow(e.s, newTag(e) + kindsTag(e) + confTag(e), refLine(e)));
-  if (callersUnchanged.length) html += `<div class="hint">未改动的调用方</div>` + refList(callersUnchanged, (e) => nodeRow(e.s, kindsTag(e) + confTag(e), refLine(e)));
-  if (tests.length) html += `<div class="hint">测试</div>` + refList(tests, (e) => nodeRow(e.s, '', refLine(e)));
-  if (n.importedBy?.length) html += `<div class="hint">被 ${n.importedBy.length} 个文件 import</div>`;
+  html += `<h3>${t('usedByHeading', inc.length)}</h3>`;
+  if (!inc.length && !isCtx && !n.isTest) html += `<div class="hint">${n.status === 'deleted' ? t('deletedHint') : n.kind === 'test' ? '' : t('noCallersHint')}</div>`;
+  if (callersChanged.length) html += `<div class="hint">${t('callersChangedHint')}</div>` + refList(callersChanged, (e) => nodeRow(e.s, newTag(e) + kindsTag(e) + confTag(e), refLine(e)));
+  if (callersUnchanged.length) html += `<div class="hint">${t('callersUnchangedHint')}</div>` + refList(callersUnchanged, (e) => nodeRow(e.s, kindsTag(e) + confTag(e), refLine(e)));
+  if (tests.length) html += `<div class="hint">${t('testsHint')}</div>` + refList(tests, (e) => nodeRow(e.s, '', refLine(e)));
+  if (n.importedBy?.length) html += `<div class="hint">${t('importedByHint', n.importedBy.length)}</div>`;
   if (n.formerCallers?.length) {
-    html += `<h3>删除前的调用方（${n.formerCallers.length}）</h3>` + refList(n.formerCallers, (c) => refRow(`data-open="${esc(c.file)}" data-line="${c.line}"`, `${icon('braces')}<span class="nm">${esc(c.id.split('#')[1])}</span>${pill(c.callerStatus === 'unchanged' ? 'deleted' : c.callerStatus === 'file-changed' ? 'modified' : c.callerStatus, c.callerStatus === 'unchanged' ? '未修改!' : STATUS_LABEL[c.callerStatus] ?? '文件有改动')}<span class="ln">${esc(c.file)}:${c.line}  ${esc(c.text)}</span>`));
+    html += `<h3>${t('formerCallersHeading', n.formerCallers.length)}</h3>` + refList(n.formerCallers, (c) => refRow(`data-open="${esc(c.file)}" data-line="${c.line}"`, `${icon('braces')}<span class="nm">${esc(c.id.split('#')[1])}</span>${pill(c.callerStatus === 'unchanged' ? 'deleted' : c.callerStatus === 'file-changed' ? 'modified' : c.callerStatus, c.callerStatus === 'unchanged' ? t('unmodifiedWarning') : STATUS_LABEL[c.callerStatus] ?? t('fileChanged'))}<span class="ln">${esc(c.file)}:${c.line}  ${esc(c.text)}</span>`));
   }
   if (out.length) {
-    html += `<h3>依赖 / 调用了（${out.length}）</h3>` + refList(out, (e) => nodeRow(e.t, newTag(e) + kindsTag(e), refLine(e)));
+    html += `<h3>${t('dependenciesHeading', out.length)}</h3>` + refList(out, (e) => nodeRow(e.t, newTag(e) + kindsTag(e), refLine(e)));
   }
   if (res.length) {
-    html += `<h3>资源访问（${res.length}）</h3>` + refList(res, (e) => {
+    html += `<h3>${t('resourceAccessHeading', res.length)}</h3>` + refList(res, (e) => {
       const r = nodes.get(e.t);
       return refRow(`data-sel="${r.sid}"`, `${icon(KIND_ICON[r.kind])}<span class="nm">${esc(r.name)}</span><span class="pill st-context" style="color:var(--${OP_COLOR[e.op] ?? 'mute'})">${esc(e.op)}</span>${pill(e.status)}<span class="ln">${esc(e.refs[0]?.text ?? '')}</span>`);
     });
   }
   if (n.logs?.length) {
-    html += `<h3>日志（${n.logs.length}）</h3>` + refList(n.logs, (l) => refRow(`data-open="${esc(n.status === 'deleted' ? n.oldFile ?? n.file : n.file)}" data-line="${l.line}"`, `${icon('file')}<span class="pill st-context">${esc(l.level)}</span>${pill(l.status)}<span class="nm mono">${esc(l.msg)}</span>`));
+    html += `<h3>${t('logsHeading', n.logs.length)}</h3>` + refList(n.logs, (l) => refRow(`data-open="${esc(n.status === 'deleted' ? n.oldFile ?? n.file : n.file)}" data-line="${l.line}"`, `${icon('file')}<span class="pill st-context">${esc(l.level)}</span>${pill(l.status)}<span class="nm mono">${esc(l.msg)}</span>`));
   }
   if (!isCtx) {
-    if (n.hunks?.length) html += `<h3>代码改动</h3><div class="diff" tabindex="0" role="region" aria-label="代码差异">${hunksHtml(n.hunks, n.lang)}</div>`;
-    else if (n.status === 'moved') html += `<h3>代码改动</h3><div class="hint">内容未变，仅从 <code>${esc(n.oldFile)}</code> 移动到当前位置</div>`;
+    if (n.hunks?.length) html += `<h3>${t('codeChangesHeading')}</h3><div class="diff" tabindex="0" role="region" aria-label="${esc(t('diffAriaCode'))}">${hunksHtml(n.hunks, n.lang)}</div>`;
+    else if (n.status === 'moved') html += `<h3>${t('codeChangesHeading')}</h3><div class="hint">${t('codeChangesMovedHint', n.oldFile)}</div>`;
     const f = fileByPath.get(n.file) || fileByPath.get(n.oldFile);
-    if (f) html += `<div class="btns"><button class="btn" data-file="${f.id}">查看整个文件的 diff</button></div>`;
+    if (f) html += `<div class="btns"><button class="btn" data-file="${f.id}">${t('viewFileDiff')}</button></div>`;
   } else {
-    html += `<div class="hint" style="margin-top:12px">该函数本次未改动，因与改动代码存在调用关系而显示。</div>`;
+    html += `<div class="hint" style="margin-top:12px">${t('contextFuncHint')}</div>`;
   }
   detail.innerHTML = html;
   detail.parentElement.scrollTop = 0;
 }
 
 function showResource(r) {
+  currentDetail = { type: 'resource', arg: r };
   const users = r.usages ?? [];
   let html = `<h2><span class="kindtag">${icon(KIND_ICON[r.kind])} ${esc(KIND_LABEL[r.kind] ?? r.kind)}</span>${esc(r.name)}</h2><div class="meta">${pill(r.status)}</div>`;
-  if (r.stillReferenced?.length) html += `<div class="warn">${icon('triangle-alert')} 该配置项已从配置文件中删除，但代码中仍有 ${r.stillReferenced.length} 处引用：${refList(r.stillReferenced, (h) => refRow(`data-open="${esc(h.file)}" data-line="${h.line}"`, `<span class="ln">${esc(h.file)}:${h.line}  ${esc(h.text)}</span>`))}</div>`;
-  if (r.undeclared) html += `<div class="warn">${icon('triangle-alert')} 新读取的配置项未在任何 <code>.env*</code> 示例文件中声明。</div>`;
-  if (r.defs?.length) html += `<h3>定义 / 结构变化（${r.defs.length}）</h3>` + refList(r.defs, (d) => refRow(`data-file="${d.fileId}"`, `${icon('file')}<span class="nm mono">${esc(d.op)}</span>${pill(d.status)}<span class="ln">${esc(d.file)}${d.line ? ':' + d.line : ''}</span><span class="ln" style="white-space:pre-wrap">${esc(d.text)}</span>`));
+  if (r.stillReferenced?.length) html += `<div class="warn">${icon('triangle-alert')} ${t('configDeletedWarn', r.stillReferenced.length)} ${refList(r.stillReferenced, (h) => refRow(`data-open="${esc(h.file)}" data-line="${h.line}"`, `<span class="ln">${esc(h.file)}:${h.line}  ${esc(h.text)}</span>`))}</div>`;
+  if (r.undeclared) html += `<div class="warn">${icon('triangle-alert')} ${t('configUndeclaredWarn')}</div>`;
+  if (r.defs?.length) html += `<h3>${t('definitionsHeading', r.defs.length)}</h3>` + refList(r.defs, (d) => refRow(`data-file="${d.fileId}"`, `${icon('file')}<span class="nm mono">${esc(d.op)}</span>${pill(d.status)}<span class="ln">${esc(d.file)}${d.line ? ':' + d.line : ''}</span><span class="ln" style="white-space:pre-wrap">${esc(d.text)}</span>`));
   const groups = { added: [], removed: [], unchanged: [] };
   for (const u of users) (groups[u.status] ?? groups.unchanged).push(u);
   const row = (u) => {
     const sid = idToSid.get(u.entity);
     return refRow(`data-sel="${sid}"`, `${icon('braces')}<span class="nm">${esc(nodes.get(sid)?.qname ?? u.entity)}</span><span class="pill st-context" style="color:var(--${OP_COLOR[u.op] ?? 'mute'})">${esc(u.op)}${u.detail ? ' · ' + esc(u.detail) : ''}</span><span class="ln">${esc(u.file?.split('/').pop())}:${u.line}  ${esc(u.text)}</span>`);
   };
-  html += `<h3>访问方（${users.length}）</h3>`;
-  if (groups.added.length) html += `<div class="hint">本次新增的访问</div>` + refList(groups.added, row);
-  if (groups.removed.length) html += `<div class="hint">本次移除的访问</div>` + refList(groups.removed, row);
-  if (groups.unchanged.length) html += `<div class="hint">改动代码中原有的访问</div>` + refList(groups.unchanged, row);
-  html += `<div class="hint" style="margin-top:14px">资源由规则识别（按代码模式匹配），可能有遗漏或误报。</div>`;
+  html += `<h3>${t('accessingHeading', users.length)}</h3>`;
+  if (groups.added.length) html += `<div class="hint">${t('addedAccessHint')}</div>` + refList(groups.added, row);
+  if (groups.removed.length) html += `<div class="hint">${t('removedAccessHint')}</div>` + refList(groups.removed, row);
+  if (groups.unchanged.length) html += `<div class="hint">${t('unchangedAccessHint')}</div>` + refList(groups.unchanged, row);
+  html += `<div class="hint" style="margin-top:14px">${t('resourceHeuristicHint')}</div>`;
   detail.innerHTML = html;
   detail.parentElement.scrollTop = 0;
 }
@@ -972,83 +1528,94 @@ function showResource(r) {
 function showFile(fid) {
   const f = files.get(fid);
   if (!f) return;
+  currentDetail = { type: 'file', arg: fid };
   const ents = f.entities.map((id) => idToSid.get(id)).filter(Boolean);
-  let html = `<h2><span class="kindtag">${icon('file')}文件</span>${esc(f.path.split('/').pop())}</h2>
-    <div class="meta">${pill(f.status === 'renamed' ? 'moved' : f.status, { added: '新增', modified: '修改', deleted: '删除', renamed: `重命名 ${f.similarity ?? ''}%` }[f.status])}<span class="pill st-context">${esc(f.kind)}</span>
+  let html = `<h2><span class="kindtag">${icon('file')}${t('fileTag')}</span>${esc(f.path.split('/').pop())}</h2>
+    <div class="meta">${pill(f.status === 'renamed' ? 'moved' : f.status, f.status === 'renamed' ? t('fileRenamedPill', f.similarity) : STATUS_LABEL[f.status])}<span class="pill st-context">${esc(f.kind)}</span>
     <span class="mono"><b style="color:var(--add)">+${f.additions}</b> <b style="color:var(--del)">−${f.deletions}</b></span></div>
-    <div class="meta">${pathLink(f.path, 1)}</div>${f.oldPath ? `<div class="meta">原路径 <span class="mono">${esc(f.oldPath)}</span></div>` : ''}`;
-  if (ents.length) html += `<h3>改动实体（${ents.length}）</h3>` + refList(ents, (s) => nodeRow(s, (() => { const n = nodes.get(s); return n.signatureChanged ? '<span class="pill lv-medium">签名</span>' : ''; })()));
+    <div class="meta">${pathLink(f.path, 1)}</div>${f.oldPath ? `<div class="meta">${t('originalLocation')} <span class="mono">${esc(f.oldPath)}</span></div>` : ''}`;
+  if (ents.length) html += `<h3>${t('fileChangedEntsHeading', ents.length)}</h3>` + refList(ents, (s) => nodeRow(s, (() => { const n = nodes.get(s); return n.signatureChanged ? `<span class="pill lv-medium">${t('signatureChangedPill')}</span>` : ''; })()));
   const res = F.resources.filter((r) => r.defs.some((d) => d.fileId === fid));
-  if (res.length) html += `<h3>涉及资源</h3>` + refList(res, (r) => refRow(`data-sel="${r.sid}"`, `${icon(KIND_ICON[r.kind])}<span class="nm">${esc(r.name)}</span>${pill(r.status)}`));
+  if (res.length) html += `<h3>${t('involvedResHeading')}</h3>` + refList(res, (r) => refRow(`data-sel="${r.sid}"`, `${icon(KIND_ICON[r.kind])}<span class="nm">${esc(r.name)}</span>${pill(r.status)}`));
   html += `<h3>Diff</h3>`;
-  if (f.binary) html += '<div class="hint">二进制文件</div>';
-  else if (!f.patch) html += `<div class="hint">${f.kind === 'lock' ? '锁文件，已省略' : f.status === 'renamed' ? '内容未变' : '无文本改动'}</div>`;
-  else html += `<div class="diff" tabindex="0" role="region" aria-label="文件差异">${hunksHtml(parsePatch(f.patch), f.lang)}</div>${f.truncated ? '<div class="hint">diff 过长已截断</div>' : ''}`;
+  if (f.binary) html += `<div class="hint">${t('fileBinaryHint')}</div>`;
+  else if (!f.patch) html += `<div class="hint">${f.kind === 'lock' ? t('fileLockHint') : f.status === 'renamed' ? t('fileRenamedSameHint') : t('fileNoDiffHint')}</div>`;
+  else html += `<div class="diff" tabindex="0" role="region" aria-label="${esc(t('diffAriaFile'))}">${hunksHtml(parsePatch(f.patch), f.lang)}</div>${f.truncated ? `<div class="hint">${t('fileTruncatedHint')}</div>` : ''}`;
   detail.innerHTML = html;
   detail.parentElement.scrollTop = 0;
 }
 
 function showContextFile(path) {
-  detail.innerHTML = `<h2><span class="kindtag">${icon('file')}文件</span>${esc(path.split('/').pop())}</h2><div class="meta">${pill('context')}</div><div class="meta">${pathLink(path, 1)}</div><div class="hint">该文件本次未改动。</div>`;
+  currentDetail = { type: 'contextFile', arg: path };
+  detail.innerHTML = `<h2><span class="kindtag">${icon('file')}${t('fileTag')}</span>${esc(path.split('/').pop())}</h2><div class="meta">${pill('context')}</div><div class="meta">${pathLink(path, 1)}</div><div class="hint">${t('fileContextHint')}</div>`;
 }
 
 function showModule(m) {
+  currentDetail = { type: 'module', arg: m };
   const fs = F.files.filter((f) => f.module === m);
   const ents = F.entities.filter((e) => e.module === m && !e.isTest);
-  detail.innerHTML = `<h2><span class="kindtag">${icon('layers')}模块</span>${esc(m)}</h2>
-    <div class="btns"><button class="btn" data-go-module="${esc(m)}">展开到实体视图 ${icon('arrow-right')}</button></div>
-    <h3>文件（${fs.length}）</h3>${refList(fs, (f) => refRow(`data-file="${f.id}"`, `${icon('file')}<span class="nm">${esc(f.path.split('/').slice(-2).join('/'))}</span>${pill(f.status === 'renamed' ? 'moved' : f.status)}<span class="hint">+${f.additions} −${f.deletions}</span>`))}
-    <h3>改动实体（${ents.length}）</h3>${refList(ents.slice(0, 200), (e) => nodeRow(e.sid))}`;
+  detail.innerHTML = `<h2><span class="kindtag">${icon('layers')}${t('moduleTag')}</span>${esc(m)}</h2>
+    <div class="btns"><button class="btn" data-go-module="${esc(m)}">${t('expandModuleBtn')} ${icon('arrow-right')}</button></div>
+    <h3>${t('moduleFilesHeading', fs.length)}</h3>${refList(fs, (f) => refRow(`data-file="${f.id}"`, `${icon('file')}<span class="nm">${esc(f.path.split('/').slice(-2).join('/'))}</span>${pill(f.status === 'renamed' ? 'moved' : f.status)}<span class="hint">+${f.additions} −${f.deletions}</span>`))}
+    <h3>${t('moduleEntsHeading', ents.length)}</h3>${refList(ents.slice(0, 200), (e) => nodeRow(e.sid))}`;
   detail.parentElement.scrollTop = 0;
 }
 
 function showEdge(e) {
+  currentDetail = { type: 'edge', arg: e };
   const a = nodes.get(e.s); const b = nodes.get(e.t);
-  let html = `<h2>${esc(nodeName(a))} ${icon('arrow-right')} ${esc(nodeName(b))}</h2><div class="meta">${pill(e.status === 'added' ? 'added' : e.status === 'removed' ? 'removed' : 'context', e.status === 'added' ? '本次新增' : e.status === 'removed' ? '本次移除' : '已有')}
+  let html = `<h2>${esc(nodeName(a))} ${icon('arrow-right')} ${esc(nodeName(b))}</h2><div class="meta">${pill(e.status === 'added' ? 'added' : e.status === 'removed' ? 'removed' : 'context', e.status === 'added' ? t('addedPill') : e.status === 'removed' ? t('removedPill') : t('existingPill'))}
     <span class="pill st-context">${esc(e.et === 'res' ? e.op : e.kinds.join(', '))}</span></div>
-    <ul class="refs">${nodeRow(e.s)}${nodeRow(e.t)}</ul><h3>出现位置</h3>` +
+    <ul class="refs">${nodeRow(e.s)}${nodeRow(e.t)}</ul><h3>${t('occurrencesHeading')}</h3>` +
     refList(e.refs ?? [], (r) => refRow(`data-open="${esc(r.file)}" data-line="${r.line}"`, `<span class="ln">${esc(r.file)}:${r.line}  ${esc(r.text ?? '')}</span>`));
   detail.innerHTML = html;
 }
 
 function showChangeSet(id) {
+  currentDetail = { type: 'cs', arg: id };
   const cs = csById.get(id);
   if (!cs) return;
   const order = cs.reviewOrder?.length ? [...cs.reviewOrder, ...cs.entities.filter((s) => !cs.reviewOrder.includes(s))] : cs.entities;
-  let html = `<h2>${esc(cs.title)}</h2><div class="meta">${cs.risk ? `<span class="pill lv-${esc(cs.risk)}">风险 ${esc(cs.risk)}</span>` : ''}${cs.auto ? '<span class="pill st-context">自动分组</span>' : ''}<span>${cs.entities.length} 个实体</span></div>`;
-  if (cs.summary) html += `<div class="note ${cs.auto ? '' : 'ai'}">${md(cs.summary).replace(/^<div class="md"><p>|<\/p><\/div>$/g, '')}</div>`;
-  if (cs.why) html += `<h3>为什么这样改</h3>${md(cs.why)}`;
-  if (cs.reviewHint) html += `<h3>审阅重点</h3>${md(cs.reviewHint)}`;
-  html += `<h3>建议阅读顺序 <span class="hint" style="text-transform:none">（<span class="kbd">j</span>/<span class="kbd">k</span> 逐个查看）</span></h3>` +
+  let html = `<h2>${esc(csTitle(cs))}</h2><div class="meta">${cs.risk ? `<span class="pill lv-${esc(cs.risk)}">${t('riskLevelPill', esc(cs.risk))}</span>` : ''}${cs.auto ? `<span class="pill st-context">${t('autoGroupedPill')}</span>` : ''}<span>${t('csEntitiesCount', cs.entities.length)}</span></div>`;
+  if (csSummary(cs)) html += `<div class="note ${cs.auto ? '' : 'ai'}">${md(csSummary(cs)).replace(/^<div class="md"><p>|<\/p><\/div>$/g, '')}</div>`;
+  if (cs.why) html += `<h3>${t('whyHeading')}</h3>${md(cs.why)}`;
+  if (cs.reviewHint) html += `<h3>${t('reviewFocusHeading')}</h3>${md(cs.reviewHint)}`;
+  html += `<h3>${t('readingOrderHeading')} <span class="hint" style="text-transform:none">${t('readingOrderShortcut')}</span></h3>` +
     refList(order, (s) => nodeRow(s, store.reviewed[s] === 'ok' ? icon('check') : store.reviewed[s] === 'q' ? icon('circle-help') : '', A.entityNotes?.[s] ?? ''));
-  if (cs.files?.length) html += `<h3>相关文件</h3>` + refList(cs.files, (fid) => { const f = files.get(fid); return f ? refRow(`data-file="${fid}"`, `${icon('file')}<span class="nm">${esc(f.path)}</span>${pill(f.status === 'renamed' ? 'moved' : f.status)}`) : ''; });
-  if (cs.resources?.length) html += `<h3>相关资源</h3>` + refList(cs.resources, (r) => nodeRow(r));
+  if (cs.files?.length) html += `<h3>${t('relatedFilesHeading')}</h3>` + refList(cs.files, (fid) => { const f = files.get(fid); return f ? refRow(`data-file="${fid}"`, `${icon('file')}<span class="nm">${esc(f.path)}</span>${pill(f.status === 'renamed' ? 'moved' : f.status)}`) : ''; });
+  if (cs.resources?.length) html += `<h3>${t('relatedResHeading')}</h3>` + refList(cs.resources, (r) => nodeRow(r));
   detail.innerHTML = html;
   detail.parentElement.scrollTop = 0;
   state.csCursor = { id, order, i: -1 };
 }
 
 function showRisk(r) {
-  detail.innerHTML = `<h2>${esc(r.title)}</h2><div class="meta"><span class="pill lv-${r.level}">${r.level}</span><span class="src">来源：${r.src}${r.rule ? ' · ' + esc(r.rule) : ''}</span></div>
-    ${r.detail ? `<div class="sig">${esc(r.detail)}</div>` : ''}
-    ${r.entities?.length ? `<h3>相关节点</h3>` + refList(r.entities.filter((s) => nodes.has(s)), (s) => nodeRow(s)) : ''}
-    ${r.refs?.length ? `<h3>位置</h3>` + refList(r.refs, (x) => refRow(`data-open="${esc(x.file)}" data-line="${x.line ?? ''}"`, `<span class="ln">${esc(x.file)}${x.line ? ':' + x.line : ''}  ${esc(x.text ?? '')}</span>`)) : ''}`;
+  currentDetail = { type: 'risk', arg: r };
+  const sName = srcLabel(r);
+  detail.innerHTML = `<h2>${esc(riskTitle(r))}</h2><div class="meta"><span class="pill lv-${r.level}">${r.level}</span><span class="src">${t('sourceLabel', sName, esc(r.rule || ''))}</span></div>
+    ${riskDetail(r) ? `<div class="sig">${esc(riskDetail(r))}</div>` : ''}
+    ${r.entities?.length ? `<h3>${t('relatedNodesHeading')}</h3>` + refList(r.entities.filter((s) => nodes.has(s)), (s) => nodeRow(s)) : ''}
+    ${r.refs?.length ? `<h3>${t('locationsHeading')}</h3>` + refList(r.refs, (x) => refRow(`data-open="${esc(x.file)}" data-line="${x.line ?? ''}"`, `<span class="ln">${esc(x.file)}${x.line ? ':' + x.line : ''}  ${esc(x.text ?? '')}</span>`)) : ''}`;
 }
 
 function showOverview() {
+  currentDetail = { type: 'overview' };
   const s = F.stats;
   const es = s.entitiesByStatus;
-  let html = `<h2>${esc(A.title || '改动总览')}</h2><div class="meta"><span class="mono">${esc(F.meta.range.label)}</span></div>`;
-  if (A.summary) html += `<div class="note ai">AI 摘要</div>${md(A.summary)}`;
-  else html += `<div class="note">还没有 AI 分析。让 Claude 读取 <code>digest.md</code> 并生成 <code>analysis.json</code> 后重新 render，即可得到改动意图、改动集分组和审阅顺序。</div>`;
-  html += `<div class="grid"><div><b>${s.files}</b><span>文件</span></div><div><b style="color:var(--add)">+${s.additions}</b><span>新增行</span></div><div><b style="color:var(--del)">−${s.deletions}</b><span>删除行</span></div><div><b>${F.resources.length}</b><span>资源</span></div>
-    <div><b>${es.added ?? 0}</b><span>新增实体</span></div><div><b>${es.modified ?? 0}</b><span>修改实体</span></div><div><b>${es.deleted ?? 0}</b><span>删除实体</span></div><div><b>${(es.moved ?? 0) + (es.renamed ?? 0)}</b><span>移动/重命名</span></div></div>`;
+  let html = `<h2>${esc(A.title || t('overviewTitleDefault'))}</h2><div class="meta"><span class="mono">${esc(F.meta.range.label)}</span></div>`;
+  if (A.summary) html += `<div class="note ai">${t('aiSummaryTag')}</div>${md(A.summary)}`;
+  else html += `<div class="note">${t('noAiOverview')}</div>`;
+  html += `<div class="grid"><div><b>${s.files}</b><span>${t('gridFiles')}</span></div><div><b style="color:var(--add)">+${s.additions}</b><span>${t('gridAdditions')}</span></div><div><b style="color:var(--del)">−${s.deletions}</b><span>${t('gridDeletions')}</span></div><div><b>${F.resources.length}</b><span>${t('gridResources')}</span></div>
+    <div><b>${es.added ?? 0}</b><span>${t('gridAddedEnts')}</span></div><div><b>${es.modified ?? 0}</b><span>${t('gridModEnts')}</span></div><div><b>${es.deleted ?? 0}</b><span>${t('gridDelEnts')}</span></div><div><b>${(es.moved ?? 0) + (es.renamed ?? 0)}</b><span>${t('gridMovedEnts')}</span></div></div>`;
   const top = risks.filter((r) => r.level !== 'low').slice(0, 8);
-  if (top.length) html += `<h3>重点风险</h3>` + top.map((r) => `<button type="button" class="risk" data-risk-ov="${risks.indexOf(r)}"><span class="pill lv-${r.level}">${r.level}</span> ${esc(r.title)} <span class="src">${r.src}</span></button>`).join('');
-  if (A.changeSets?.length) html += `<h3>审阅路径</h3>` + changeSets.map((c, i) => `<button type="button" class="risk" data-cs="${esc(c.id)}"><b>${i + 1}.</b> ${esc(c.title)} <span class="hint">${c.entities.length} 实体</span></button>`).join('');
-  if (F.meta.commits?.length) html += `<h3>提交（${F.meta.commits.length}）</h3><div class="commits">${F.meta.commits.map((c) => `<div><code>${esc(c.sha)}</code>${esc(c.subject)}</div>`).join('')}</div>`;
-  html += `<h3>操作</h3><div class="hint">单击节点查看详情 · 双击节点聚焦其关系 · 双击模块展开 · <span class="kbd">/</span> 搜索 · <span class="kbd">j</span>/<span class="kbd">k</span> 在改动集内切换 · <span class="kbd">r</span> 标记已审阅 · <span class="kbd">Esc</span> 取消选择</div>
-    <div class="hint" style="margin-top:6px">生成于 ${esc(F.meta.generatedAt)} · 耗时 ${s.elapsedSec?.toFixed?.(1)}s${F.meta.ts ? ` · TS 引用分析 ${F.meta.ts.files} 个文件` : ''}</div>`;
+  if (top.length) html += `<h3>${t('keyRisksHeading')}</h3>` + top.map((r) => {
+    const sName = srcLabel(r);
+    return `<button type="button" class="risk" data-risk-ov="${risks.indexOf(r)}"><span class="pill lv-${r.level}">${r.level}</span> ${esc(riskTitle(r))} <span class="src">${sName}</span></button>`;
+  }).join('');
+  if (A.changeSets?.length) html += `<h3>${t('reviewPathsHeading')}</h3>` + changeSets.map((c, i) => `<button type="button" class="risk" data-cs="${esc(c.id)}"><b>${i + 1}.</b> ${esc(csTitle(c))} <span class="hint">${t('csEntities', c.entities.length)}</span></button>`).join('');
+  if (F.meta.commits?.length) html += `<h3>${t('commitsHeading', F.meta.commits.length)}</h3><div class="commits">${F.meta.commits.map((c) => `<div><code>${esc(c.sha)}</code>${esc(c.subject)}</div>`).join('')}</div>`;
+  html += `<h3>${t('operationsHeading')}</h3><div class="hint">${t('operationsHints')}</div>
+    <div class="hint" style="margin-top:6px">${t('generatedMeta', esc(F.meta.generatedAt), s.elapsedSec?.toFixed?.(1), F.meta.ts?.files)}</div>`;
   detail.innerHTML = html;
 }
 
@@ -1065,7 +1632,7 @@ detail.onclick = (ev) => {
   const c = t.closest('[data-cs]');
   if (c) { go({ type: 'cs', key: c.dataset.cs }, 'entity'); showChangeSet(c.dataset.cs); return; }
   const ro = t.closest('[data-risk-ov]');
-  if (ro) { const r = risks[+ro.dataset.riskOv]; const ents = (r.entities ?? []).filter((s) => nodes.has(s)); if (ents.length) go({ type: 'set', key: ents, label: r.title }, 'entity'); showRisk(r); return; }
+  if (ro) { const r = risks[+ro.dataset.riskOv]; const ents = (r.entities ?? []).filter((s) => nodes.has(s)); if (ents.length) go({ type: 'set', key: ents, label: riskTitle(r) }, 'entity'); showRisk(r); return; }
   const s = t.closest('[data-sel]');
   if (s) { select(s.dataset.sel, true); return; }
   const f = t.closest('[data-file]');
@@ -1200,9 +1767,6 @@ document.addEventListener('keydown', (ev) => {
 })();
 
 // ---------------------------------------------------------------- boot
-updateProgress();
-syncTypeFilterUi();
-renderLeft();
-showOverview();
+applyLang();
 redraw();
 })();

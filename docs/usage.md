@@ -1,6 +1,6 @@
 # 使用 PatchVista
 
-[← 返回 README](../README.md)
+[English](usage.en.md) | 简体中文 · [← 返回 README](../README.zh-CN.md)
 
 使用 AI 助手时，通常只需说明审阅范围。下面的命令用于手动生成报告、排查问题或复用已有分析；示例使用 Bash / Zsh。
 
@@ -39,7 +39,7 @@ node "$SCRIPTS/patchvista.mjs" collect --repo "$REPO" --base main --out "$OUT"
 直接生成一份事实报告：
 
 ```bash
-node "$SCRIPTS/patchvista.mjs" render --out "$OUT" --open
+node "$SCRIPTS/patchvista.mjs" render --out "$OUT" --lang zh --open
 ```
 
 浏览器将打开 `$OUT/report.html`。没有桌面环境时，将该 HTML 文件复制到本机再打开，无需复制其余 JSON 文件或启动服务器。
@@ -79,7 +79,8 @@ node "$SCRIPTS/patchvista.mjs" show --out "$OUT" e1 f1
 | 看影响范围 | 中间切换模块 / 实体视图；单击查看详情，双击聚焦上下游。 |
 | 调整图中内容 | 「显示」菜单控制未改动调用方、资源、测试与纯移动等。 |
 | 打开源码 | 选择 VS Code、Cursor 或 JetBrains 后点击文件路径；本机需有对应项目和编辑器。 |
-| 切换外观 | 右上角选择「白色 / 黑色 / 系统」，首次跟随系统。 |
+| 切换语言 | 顶部栏点击「EN / 中文」即时切换页面中英文，偏好自动保存在本地。 |
+| 切换外观 | 右上角选择「浅色 / 深色 / 系统」，首次跟随系统。 |
 | 键盘操作 | Tab 聚焦按钮，Enter / 空格执行；分隔线用左右方向键调宽，Home 恢复默认。 |
 
 主题、编辑器选择和审阅进度保存在浏览器 `localStorage`；存储被禁用时，主题仍可在本次会话切换。主题切换会保留关系图的缩放、位置和选择；窄屏采用上下排列。

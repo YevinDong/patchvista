@@ -3,7 +3,7 @@
 //
 //   collect  [--repo DIR] [--base REF [--head REF] [--two-dot] | --commit REF] [--out DIR] [--no-refs]
 //   show     --out DIR <id|sid|file>...      print entity / file diff from facts.json
-//   render   --out DIR [--open]              facts.json (+ analysis.json) → report.html
+//   render   --out DIR [--open] [--lang en|zh] facts.json (+ analysis.json) → report.html
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -83,7 +83,7 @@ if (cmd === 'collect') {
   show(path.resolve(opts.out), opts._);
 } else if (cmd === 'render') {
   const out = path.resolve(opts.out);
-  const html = render(out);
+  const html = render(out, opts);
   console.log(html);
   if (opts.open) openFile(html);
 } else {

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,67 +9,71 @@
 <style>/*__CSS__*/</style>
 </head>
 <body>
-<a class="skip-link" href="#right">跳到审阅详情</a>
+<a class="skip-link" href="#right" data-i18n="skipToDetails">Skip to review details</a>
 <header id="top">
   <div class="brand">PatchVista</div>
   <h1 id="title" class="title"></h1>
   <div id="stats" class="stats"></div>
   <div class="spacer"></div>
-  <div id="progress" class="progress" title="审阅进度"><div class="bar"><i></i></div><span></span></div>
-  <div id="themeModes" class="seg theme-modes" role="group" aria-label="外观模式">
-    <button type="button" data-theme-mode="light" aria-pressed="false"><span data-icon="sun" aria-hidden="true"></span>白色</button>
-    <button type="button" data-theme-mode="dark" aria-pressed="false"><span data-icon="moon" aria-hidden="true"></span>黑色</button>
-    <button type="button" data-theme-mode="system" aria-pressed="true"><span data-icon="monitor" aria-hidden="true"></span>系统</button>
+  <div data-i18n-attr="title:progressTitle" id="progress" class="progress" title="Review progress"><div class="bar"><i></i></div><span></span></div>
+  <div data-i18n-attr="aria-label:themeGroup" id="themeModes" class="seg theme-modes" role="group" aria-label="Appearance mode">
+    <button type="button" data-theme-mode="light" aria-pressed="false"><span data-icon="sun" aria-hidden="true"></span><span data-i18n="themeLight">Light</span></button>
+    <button type="button" data-theme-mode="dark" aria-pressed="false"><span data-icon="moon" aria-hidden="true"></span><span data-i18n="themeDark">Dark</span></button>
+    <button type="button" data-theme-mode="system" aria-pressed="true"><span data-icon="monitor" aria-hidden="true"></span><span data-i18n="themeSystem">System</span></button>
   </div>
-  <select id="editor" aria-label="打开文件的编辑器" title="点击文件路径时用哪个编辑器打开">
+  <div data-i18n-attr="aria-label:langGroup" id="langModes" class="seg lang-modes" role="group" aria-label="Language / 语言">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="zh" aria-pressed="false">中文</button>
+  </div>
+  <select data-i18n-attr="aria-label:editorAria;title:editorTitle" id="editor" aria-label="Editor to open files" title="Editor used when clicking file paths">
     <option value="vscode">VS Code</option><option value="cursor">Cursor</option>
-    <option value="idea">JetBrains</option><option value="none">不跳转</option>
+    <option value="idea">JetBrains</option><option value="none" data-i18n="editorNone">Do not open</option>
   </select>
 </header>
 <main>
-  <aside id="left" aria-label="审阅导航">
+  <aside data-i18n-attr="aria-label:navAria" id="left" aria-label="Review navigation">
     <nav class="tabs" id="leftTabs">
-      <button data-tab="files" class="on" aria-pressed="true"><span data-icon="folder" aria-hidden="true"></span>文件</button>
-      <button data-tab="sets" aria-pressed="false"><span data-icon="route" aria-hidden="true"></span>审阅路径</button>
-      <button data-tab="risks" aria-pressed="false"><span data-icon="triangle-alert" aria-hidden="true"></span>风险</button>
-      <button data-tab="res" aria-pressed="false"><span data-icon="database" aria-hidden="true"></span>资源</button>
+      <button data-tab="files" class="on" aria-pressed="true"><span data-icon="folder" aria-hidden="true"></span><span data-i18n="tabFiles">Files</span></button>
+      <button data-tab="sets" aria-pressed="false"><span data-icon="route" aria-hidden="true"></span><span data-i18n="tabSets">Review Paths</span></button>
+      <button data-tab="risks" aria-pressed="false"><span data-icon="triangle-alert" aria-hidden="true"></span><span data-i18n="tabRisks">Risks</span></button>
+      <button data-tab="res" aria-pressed="false"><span data-icon="database" aria-hidden="true"></span><span data-i18n="tabRes">Resources</span></button>
     </nav>
     <div class="tabbody" id="leftBody"></div>
   </aside>
-  <div id="lsplitter" class="splitter" tabindex="0" role="separator" aria-label="文件面板宽度" aria-orientation="vertical" aria-controls="left" title="拖动或按左右方向键调整宽度；Home 恢复默认"></div>
+  <div data-i18n-attr="aria-label:splitterFileAria;title:splitterTitle" id="lsplitter" class="splitter" tabindex="0" role="separator" aria-label="File panel width" aria-orientation="vertical" aria-controls="left" title="Drag or press Left/Right arrow keys to resize; Home to reset"></div>
   <section id="center">
     <div class="toolbar">
       <div class="seg" id="viewSeg">
-        <button data-view="module" aria-pressed="true"><span data-icon="layers" aria-hidden="true"></span>模块视图</button>
-        <button data-view="entity" aria-pressed="false"><span data-icon="network" aria-hidden="true"></span>实体视图</button>
+        <button data-view="module" aria-pressed="true"><span data-icon="layers" aria-hidden="true"></span><span data-i18n="viewModule">Module View</span></button>
+        <button data-view="entity" aria-pressed="false"><span data-icon="network" aria-hidden="true"></span><span data-i18n="viewEntity">Entity View</span></button>
       </div>
       <div id="crumbs" class="crumbs"></div>
       <div class="spacer"></div>
-      <input id="search" name="graph-search" aria-label="搜索函数、文件或资源" placeholder="搜索函数 / 文件 / 资源…" autocomplete="off" spellcheck="false" title="按 / 聚焦搜索，Enter 查看匹配结果">
+      <input data-i18n-attr="aria-label:searchAria;placeholder:searchPlaceholder;title:searchTitle" id="search" name="graph-search" aria-label="Search functions, files, or resources" placeholder="Search functions / files / resources…" autocomplete="off" spellcheck="false" title="Press / to focus search, Enter to view matches">
       <details class="opts" id="ftypeMenu">
-        <summary id="ftypeSum"><span id="ftypeLabel">文件类型</span><span data-icon="chevron-down" aria-hidden="true"></span></summary>
-        <div class="optsbox"><div class="oh">按后缀筛选（与左侧文件列表联动）</div><div id="gchips" class="fchips"></div></div>
+        <summary id="ftypeSum"><span id="ftypeLabel">File Types</span><span data-icon="chevron-down" aria-hidden="true"></span></summary>
+        <div class="optsbox"><div class="oh" id="ftypeDesc" data-i18n="ftypePopupHeader">Filter by extension (synced with left file list)</div><div id="gchips" class="fchips"></div></div>
       </details>
-      <details class="opts">
-        <summary>显示<span data-icon="chevron-down" aria-hidden="true"></span></summary>
+      <details class="opts" id="displayMenu">
+        <summary id="displaySum"><span id="displayLabel" data-i18n="displayMenu">Display</span><span data-icon="chevron-down" aria-hidden="true"></span></summary>
         <div class="optsbox">
-        <label><input type="checkbox" id="optContext" checked> 未改动的调用方/被调方</label>
-        <label><input type="checkbox" id="optRes" checked> 资源（DB/Redis/MQ/配置…）</label>
-        <label><input type="checkbox" id="optTests"> 测试</label>
-        <label><input type="checkbox" id="optMoves"> 纯移动 / 仅 import 变化</label>
-        <label><input type="checkbox" id="optTypes" checked> 类型/接口</label>
-        <label>邻居深度 <select id="optDepth"><option>1</option><option>2</option></select></label>
+        <label><input type="checkbox" id="optContext" checked> <span data-i18n="optContext">Unmodified callers/callees</span></label>
+        <label><input type="checkbox" id="optRes" checked> <span data-i18n="optRes">Resources (DB/Redis/MQ/config…)</span></label>
+        <label><input type="checkbox" id="optTests"> <span data-i18n="optTests">Tests</span></label>
+        <label><input type="checkbox" id="optMoves"> <span data-i18n="optMoves">Pure moves / imports only</span></label>
+        <label><input type="checkbox" id="optTypes" checked> <span data-i18n="optTypes">Types/interfaces</span></label>
+        <label><span data-i18n="optDepth">Neighbor depth</span> <select id="optDepth"><option>1</option><option>2</option></select></label>
         </div>
       </details>
-      <button id="fit" aria-label="适应窗口" title="适应窗口"><span data-icon="maximize" aria-hidden="true"></span></button>
+      <button data-i18n-attr="aria-label:fitAria;title:fitTitle" id="fit" aria-label="Fit to window" title="Fit to window"><span data-icon="maximize" aria-hidden="true"></span></button>
     </div>
-    <div id="cy" role="img" aria-label="改动关系图；可通过文件和审阅路径访问对应实体详情"></div>
+    <div data-i18n-attr="aria-label:graphAria" id="cy" role="img" aria-label="Change relationship graph; access entity details via files and review paths"></div>
     <div id="legend"></div>
-    <div id="busy" role="status" hidden>布局中…</div>
+    <div id="busy" role="status" hidden data-i18n="busyLayout">Laying out…</div>
     <div id="empty" role="status" hidden></div>
   </section>
-  <div id="splitter" class="splitter" tabindex="0" role="separator" aria-label="详情面板宽度" aria-orientation="vertical" aria-controls="right" title="拖动或按左右方向键调整宽度；Home 恢复默认"></div>
-  <aside id="right" aria-label="审阅详情" tabindex="-1"><div id="detail"></div></aside>
+  <div data-i18n-attr="aria-label:splitterDetailAria;title:splitterTitle" id="splitter" class="splitter" tabindex="0" role="separator" aria-label="Detail panel width" aria-orientation="vertical" aria-controls="right" title="Drag or press Left/Right arrow keys to resize; Home to reset"></div>
+  <aside data-i18n-attr="aria-label:detailAria" id="right" aria-label="Review details" tabindex="-1"><div id="detail"></div></aside>
 </main>
 <script id="icons" type="application/json">__ICONS__</script>
 <script id="icon-license" type="text/plain">__ICON_LICENSE__</script>

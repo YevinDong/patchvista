@@ -42,9 +42,34 @@ test('report embeds the renamed WOFF2 font without an external asset request', (
   assert(html.includes('Lucide'));
   assert(html.includes('Cole Bemis'));
   for (const mode of ['light', 'dark', 'system']) assert(html.includes(`data-theme-mode="${mode}"`));
+  for (const lang of ['en', 'zh']) assert(html.includes(`data-lang="${lang}"`));
   for (const [, attrs, source] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
     if (!/application\/json|text\/plain/.test(attrs)) new vm.Script(source);
   }
+});
+
+test('report supports bilingual English/Chinese; --lang is validated', (t) => {
+  const local = fileURLToPath(new URL('../.local/', import.meta.url));
+  fs.mkdirSync(local, { recursive: true });
+  const out = fs.mkdtempSync(path.join(local, 'render-i18n-test-'));
+  t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+  const facts = {
+    meta: { repoName: 'i18n-fixture', range: { label: 'main...dev', old: { sha: '111' }, new: { sha: '222' } } },
+    entities: [], contexts: [], resources: [], files: [],
+  };
+  fs.writeFileSync(path.join(out, 'facts.json'), JSON.stringify(facts));
+
+  const reportDefault = render(out);
+  const htmlDefault = fs.readFileSync(reportDefault, 'utf8');
+  assert(htmlDefault.includes('<html lang="en">'));
+  assert(htmlDefault.includes('data-lang="en"'));
+  assert(htmlDefault.includes('data-lang="zh"'));
+  assert(htmlDefault.includes('"defaultLang":null'));
+
+  const reportZh = render(out, { lang: 'zh' });
+  const htmlZh = fs.readFileSync(reportZh, 'utf8');
+  assert(htmlZh.includes('"defaultLang":"zh"'));
+  assert.throws(() => render(out, { lang: 'fr' }), /Unsupported --lang/);
 });
 
 test('all declared UI and graph icon names exist in the vendored subset', () => {

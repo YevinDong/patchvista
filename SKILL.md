@@ -68,18 +68,21 @@ node "$SCRIPTS/patchvista.mjs" show --out <out> e117 e223 f5
 - `reviewHint` / `risks` 要具体：指出哪个函数、什么场景、为什么可能出错；用 `[[e12]]` 引用实体（在报告中变成可点击的 chip）；`refs` 里的 `file:line` 必须真实存在
 - `entityNotes` 给关键实体写一句话说明它“这次干了什么”，不必覆盖所有实体
 - 不要复述 diff 本身，重点写读 diff 看不出来的东西：意图、跨文件的因果关系、行为变化、遗漏
+- **语言跟随用户**：先判断用户提问用的是中文还是英文，下面称“用户语言”。`analysis.json` 里的 `title` / `summary` / 改动集标题与摘要 / `reviewHint` / `risks` / `entityNotes` 全部用用户语言书写，不要中英混写（代码标识符、文件路径除外）。报告界面的 EN / 中文切换只翻译界面和规则生成的风险，**不会翻译你写的内容**，所以这里必须一次写对
 
 ## 3. render
 
 ```bash
-node "$SCRIPTS/patchvista.mjs" render --out <out> --open
+node "$SCRIPTS/patchvista.mjs" render --out <out> --open [--lang en|zh]
 ```
 
-stderr 中如有 `unknown ids` 或 `not in any change set` 警告，修正 analysis.json 后重新 render。最后告诉用户报告路径，并用几句话概括：改了什么、建议从哪里看起、最高风险的 2–3 点。
+**必须按用户语言传 `--lang`**：用户用中文 → `--lang zh`，用户用英文 → `--lang en`；其他语言选最接近的界面语言（目前只有 en / zh），`analysis.json` 仍用用户语言写。不传时报告会依次使用浏览器保存的选择、浏览器语言，可能与 `analysis.json` 的语言不一致。
+
+stderr 中如有 `unknown ids` 或 `not in any change set` 警告，修正 analysis.json 后重新 render。最后告诉用户报告路径（用用户语言回复），并用几句话概括：改了什么、建议从哪里看起、最高风险的 2–3 点。
 
 ## 报告怎么用（可转告用户）
 
-- 右上角选择「白色 / 黑色 / 系统」，默认跟随系统；手动选择保存在 localStorage。主题、图标和字体均内嵌，离线可用
+- 顶部「EN / 中文」切换界面语言；右上角选择「白色 / 黑色 / 系统」，默认跟随系统；手动选择保存在 localStorage。主题、图标和字体均内嵌，离线可用
 - 左侧默认显示「文件」树，支持路径搜索、目录折叠及后缀过滤；切换「审阅路径」可按改动集逐个看，点击后按 `j`/`k` 依次浏览实体，`r` 标记已审（进度保存在浏览器 localStorage）
 - 中间图：模块视图 ↔ 实体视图；单击看详情，双击聚焦某节点的上下游；「显示」里可切换未改动调用方、资源、测试、纯移动
 - 右侧：签名变化、调用方（区分本次改动/未改动/测试）、资源读写、日志、代码 diff；文件路径可直接在 VS Code / Cursor / JetBrains 打开
