@@ -2,40 +2,42 @@
 
 All ids are short ids from digest.md: `e*` entity, `c*` context entity, `r*` resource, `f*` file. Markdown fields support `**bold**`, `` `code` ``, lists, and `[[e12]]` chips.
 
+**Write every human-readable string in the user's language** (the language the user wrote in); the examples below are in English only for illustration.
+
 ```jsonc
 {
-  "title": "一句话标题（显示在页头）",
-  "summary": "markdown：这批改动整体在做什么、为什么、最需要人看的 3-5 处、建议顺序",
+  "title": "One-line title (shown in the page header)",
+  "summary": "markdown: what this batch of changes does overall and why, the 3-5 places that most need a human, suggested order",
 
-  // 数组顺序 = 建议审阅顺序
+  // Array order = suggested review order
   "changeSets": [
     {
-      "id": "billing",                       // 任意唯一字符串
-      "title": "④ 计费支持加入调用方事务",
-      "summary": "markdown：这一组改了什么、意图",
-      "reviewHint": "markdown 列表：审阅时具体该检查什么",
+      "id": "billing",                       // any unique string
+      "title": "④ Billing can join the caller's transaction",
+      "summary": "markdown: what this group changes and why",
+      "reviewHint": "markdown list: what exactly to check while reviewing",
       "risk": "high | medium | low",
-      "entities": ["e3", "e6", "e7"],        // 该改动集包含的实体（必填）
-      "reviewOrder": ["e3", "e6", "e7"],     // 可选：实体的阅读顺序，未列出的排在后面
-      "files": ["f5"],                       // 可选：没有实体的文件（SQL 迁移、.env、文档…）
-      "resources": ["r19"]                   // 可选：相关资源
+      "entities": ["e3", "e6", "e7"],        // entities in this change set (required)
+      "reviewOrder": ["e3", "e6", "e7"],     // optional: reading order of entities; unlisted ones come last
+      "files": ["f5"],                       // optional: files without entities (SQL migrations, .env, docs…)
+      "resources": ["r19"]                   // optional: related resources
     }
   ],
 
-  // AI 发现的风险，与规则风险一起显示
+  // Risks you found; shown together with rule-generated risks
   "risks": [
     {
       "level": "high | medium | low",
-      "title": "简短标题",
-      "detail": "具体场景与原因",
+      "title": "Short title",
+      "detail": "Concrete scenario and cause",
       "entities": ["e223"],
-      "refs": [{ "file": "src/a.ts", "line": 161 }]   // 必须真实存在
+      "refs": [{ "file": "src/a.ts", "line": 161 }]   // must actually exist
     }
   ],
 
-  // 关键实体的一句话说明（显示在实体详情顶部，以及改动集的阅读列表里）
-  "entityNotes": { "e223": "交付终态：…" },
+  // One-line note for key entities (shown at the top of entity details and in the change set's reading list)
+  "entityNotes": { "e223": "Final delivery state: …" },
 
-  "skim": []   // 可选：可以略读的实体
+  "skim": []   // optional: entities that can be skimmed
 }
 ```

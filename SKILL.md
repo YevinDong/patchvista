@@ -2,94 +2,102 @@
 name: patchvista
 license: ISC
 compatibility: Requires Node.js 22.20+ with npm, Git, and npm registry access for initial dependency installation.
-description: 把 git diff / 分支对比 / 某个 commit 变成可交互的单文件 HTML 审阅报告：改动实体（函数/类/接口/配置/SQL/Redis/MQ…）卡片化，展示调用关系与影响范围，并由 AI 给出改动意图、改动集分组、审阅顺序与风险。当用户要审阅一大批（尤其是 AI 生成的）改动、比较两个分支、问“这个分支改了什么/影响哪些地方/谁调用了它”、或想要 diff 的可视化时使用。支持 TS/JS（精确引用）、Go/Python（按名称匹配）。
+description: Turn a git diff, branch comparison or single commit into an interactive single-file HTML review report. Changed entities (functions, classes, interfaces, config, SQL, Redis, MQ…) become cards with call relationships and blast radius, and the AI adds change intent, grouped change sets, a suggested reading order and risks. Use when the user wants to review a large (especially AI-generated) set of changes, compare two branches, asks "what did this branch change / what does it affect / who calls this", or wants a visual diff. Supports TS/JS (precise references) and Go/Python (name-based matching). 中文触发词：审阅改动、这个分支改了什么、影响哪些地方、谁调用了它、diff 可视化。
 ---
 
 # PatchVista
 
-产物：`<out>/report.html`（离线单文件，可直接用浏览器打开）。流程分三步：**collect（确定性事实）→ 分析（你来写 analysis.json）→ render**。
+Output: `<out>/report.html` — an offline single file that opens directly in a browser. Three steps: **collect (deterministic facts) → analyze (you write analysis.json) → render**.
 
-## 运行准备
+## Language
 
-需要 Node.js 22.20+（推荐 24 LTS，含 npm）和 Git。首次安装依赖需要访问 npm registry；HTML 报告可离线打开。
+Decide the **user language** from the language the user writes in (Chinese or English). Then:
 
-以**当前加载的 `SKILL.md` 所在目录**为技能根目录，将其 `scripts/` 的绝对路径设置为变量 `SCRIPTS`（下文使用 `$SCRIPTS`）。不要根据当前工作目录推断，也不要写死某个 Agent 的安装路径。
+- Write everything in `analysis.json` that a human reads — `title`, `summary`, change-set titles and summaries, `reviewHint`, `risks`, `entityNotes` — in the user language. Do not mix languages (code identifiers and file paths excepted). The report's EN / 中文 toggle only translates the UI and rule-generated risks, **never your text**, so get it right the first time.
+- Pass `--lang` to `render` to match (see step 3).
+- Reply to the user in the user language too.
+- `digest.md` and the CLI output are always English, whatever the user language is.
 
-首次使用、`scripts/package-lock.json` 更新或依赖缺失时执行：
+## Setup
+
+Requires Node.js 22.20+ (24 LTS recommended, includes npm) and Git. The first install needs access to the npm registry; the HTML report itself works offline.
+
+Treat the directory containing the **currently loaded `SKILL.md`** as the skill root and set the absolute path of its `scripts/` to a variable `SCRIPTS` (used below as `$SCRIPTS`). Do not infer it from the working directory, and do not hard-code any agent's install path.
+
+On first use, when `scripts/package-lock.json` changes, or when dependencies are missing:
 
 ```bash
 npm ci --prefix "$SCRIPTS" --ignore-scripts
 ```
 
-`skills add` 只安装技能文件；上述命令按锁文件安装运行依赖，不执行依赖的生命周期脚本。依赖保存在技能的 `scripts/node_modules/`，不要提交到 Git。安装失败时先处理 Node.js 版本、网络或目录写权限问题，再运行脚本。
+`skills add` only installs the skill files; the command above installs runtime dependencies from the lockfile without running their lifecycle scripts. Dependencies live in the skill's `scripts/node_modules/` and must not be committed. If installation fails, fix the Node.js version, network or directory write permissions first, then run the scripts.
 
-审阅产物包含源码、diff 和本机路径，默认保存在 `~/.patchvista/`；对外分享前检查敏感内容。
+Review artifacts contain source code, diffs and local paths. They are saved under `~/.patchvista/` by default; check them for sensitive content before sharing.
 
-## 1. 确定比较范围并 collect
+## 1. Pick the comparison range and collect
 
-根据用户的话选择范围（拿不准时先 `git branch -a` / `git log --oneline -5` 看一眼）：
+Choose the range from what the user said (when unsure, run `git branch -a` / `git log --oneline -5` first):
 
-| 用户意图 | 参数 |
+| User intent | Arguments |
 |---|---|
-| 当前分支相对 dev/main 的改动（PR 视角，默认三点 merge-base） | `--base dev`（`--head` 默认 HEAD） |
-| 两个分支直接对比 | `--base A --head B`，严格两点比较再加 `--two-dot` |
-| 某个 commit | `--commit <sha>` |
-| 未提交的工作区改动 | 不传 base/commit |
+| Current branch vs. dev/main (PR view, default three-dot merge-base) | `--base dev` (`--head` defaults to HEAD) |
+| Compare two branches directly | `--base A --head B`; add `--two-dot` for a strict two-dot comparison |
+| A single commit | `--commit <sha>` |
+| Uncommitted working-tree changes | pass neither base nor commit |
 
 ```bash
 node "$SCRIPTS/patchvista.mjs" collect --repo <repo> --base <ref> [--head <ref>]
 ```
 
-输出 JSON：`{out, facts, digest, digestLines, stats}`。默认输出目录 `~/.patchvista/<repo>/<range>`。100 个文件以内的 TS 仓库通常 10–40 秒（需要对 head 做临时 worktree 并跑 TypeScript LanguageService）。`--no-refs` 可跳过引用分析，只用于快速预览。
+Prints JSON: `{out, facts, digest, digestLines, stats}`. The default output directory is `~/.patchvista/<repo>/<range>`. A TS repo with up to 100 files usually takes 10–40 seconds (a temporary worktree is created for head and the TypeScript LanguageService runs). `--no-refs` skips reference analysis and is only meant for quick previews.
 
-## 2. 阅读 digest，写 analysis.json
+## 2. Read the digest, write analysis.json
 
-先完整读 `<out>/digest.md`。它是 facts.json 的紧凑版：
+Read `<out>/digest.md` in full first. It is a compact form of facts.json:
 
 - `e12 M method X.y +3/-1 sig± in:[c3*,e5] tests:2 out:[...] res:[r4:db:user(write+)]`
-  - `e*` 改动实体，`c*` 未改动的上下文实体，`r*` 资源，`f*` 文件
-  - `in` = 谁引用了它，`*` 表示调用方本次**未修改**；`out` = 本次新增的调用；`sig±` = 签名变了
-  - `MV` 纯移动，`RN` 重命名，`formerCallers` = 被删实体原先的调用方
-  - `module (module)` = 该文件中不属于任何声明的顶层代码（import、`app.use(...)`/路由注册、定时任务注册、脚本式代码等）；`imports-only` 表示只改了 import，可以不分组
-- heuristic risks 是规则生成的，**要自己核实**
+  - `e*` changed entity, `c*` unchanged context entity, `r*` resource, `f*` file
+  - `in` = who references it; `*` means that caller was **not modified** in this change. `out` = calls added in this change. `sig±` = signature changed
+  - `MV` pure move, `RN` rename, `formerCallers` = callers a deleted entity used to have
+  - `module (module)` = top-level code in a file that belongs to no declaration (imports, `app.use(...)` / route registration, scheduled-job registration, script-style code…). `imports-only` means only imports changed and the entity can stay ungrouped
+- Heuristic risks are rule-generated — **verify them yourself**
 
-需要细节时用 `show` 查看实体或文件的 diff（不要盲猜代码行为）：
+For details, use `show` to print an entity's or file's diff (do not guess code behavior):
 
 ```bash
 node "$SCRIPTS/patchvista.mjs" show --out <out> e117 e223 f5
 ```
 
-也可以直接读仓库源码 / `git log`。对于重要结论（风险、行为变化），至少 `show` 一次确认。
+You can also read the repository source or `git log` directly. For any important conclusion (a risk, a behavior change), `show` it at least once to confirm.
 
-然后写 `<out>/analysis.json`，格式见 [references/analysis-schema.md](references/analysis-schema.md)。要点：
+Then write `<out>/analysis.json`; the format is in [references/analysis-schema.md](references/analysis-schema.md). Key points:
 
-- **changeSets 是核心**：按“意图”而非目录分组（一个改动集 = 一个可以独立理解的变化，例如“计费支持外部事务”）。数组顺序就是建议审阅顺序：先基础设施/被依赖方，后使用方；纯移动、样板代码放最后并标 `risk: low`
-- 每个非测试、非纯移动、非 `imports-only` 的 `e*` 都应该落在某个改动集里（render 会提示遗漏；遗漏的会进入“其他改动”）。实体很多时，用一个小 node 脚本按文件路径规则从 facts.json 批量分配 sid，再手写标题/摘要/提示，比手抄几百个 id 可靠
-- `reviewHint` / `risks` 要具体：指出哪个函数、什么场景、为什么可能出错；用 `[[e12]]` 引用实体（在报告中变成可点击的 chip）；`refs` 里的 `file:line` 必须真实存在
-- `entityNotes` 给关键实体写一句话说明它“这次干了什么”，不必覆盖所有实体
-- 不要复述 diff 本身，重点写读 diff 看不出来的东西：意图、跨文件的因果关系、行为变化、遗漏
-- **语言跟随用户**：先判断用户提问用的是中文还是英文，下面称“用户语言”。`analysis.json` 里的 `title` / `summary` / 改动集标题与摘要 / `reviewHint` / `risks` / `entityNotes` 全部用用户语言书写，不要中英混写（代码标识符、文件路径除外）。报告界面的 EN / 中文切换只翻译界面和规则生成的风险，**不会翻译你写的内容**，所以这里必须一次写对
+- **changeSets are the core.** Group by *intent*, not by directory (one change set = one change that can be understood on its own, e.g. "billing can join the caller's transaction"). Array order is the suggested review order: infrastructure / depended-upon code first, consumers after; pure moves and boilerplate last, marked `risk: low`
+- Every non-test, non-pure-move, non-`imports-only` `e*` should land in some change set (render warns about omissions; omitted ones fall into "Other changes"). With many entities, use a small node script to bulk-assign sids from facts.json by file-path rules, then hand-write titles, summaries and hints — more reliable than copying hundreds of ids by hand
+- Make `reviewHint` and `risks` concrete: name the function, the scenario, and why it might break. Reference entities as `[[e12]]` (rendered as clickable chips); every `file:line` in `refs` must actually exist
+- `entityNotes` gives a one-line "what this change did" for key entities; it does not need to cover every entity
+- Do not restate the diff. Write what reading the diff will not tell you: intent, cross-file cause and effect, behavior changes, omissions
 
-## 3. render
+## 3. Render
 
 ```bash
-node "$SCRIPTS/patchvista.mjs" render --out <out> --open [--lang en|zh]
+node "$SCRIPTS/patchvista.mjs" render --out <out> --open --lang <en|zh>
 ```
 
-**必须按用户语言传 `--lang`**：用户用中文 → `--lang zh`，用户用英文 → `--lang en`；其他语言选最接近的界面语言（目前只有 en / zh），`analysis.json` 仍用用户语言写。不传时报告会依次使用浏览器保存的选择、浏览器语言，可能与 `analysis.json` 的语言不一致。
+**Always pass `--lang` for the user language**: Chinese → `--lang zh`, English → `--lang en`. For any other language, pick the closest UI language (only en and zh exist today) and still write `analysis.json` in the user language. Without `--lang` the report falls back to the browser's saved choice, then the browser language, which may not match the language of `analysis.json`.
 
-stderr 中如有 `unknown ids` 或 `not in any change set` 警告，修正 analysis.json 后重新 render。最后告诉用户报告路径（用用户语言回复），并用几句话概括：改了什么、建议从哪里看起、最高风险的 2–3 点。
+If stderr shows an `unknown ids` or `not in any change set` warning, fix analysis.json and re-render. Finally, tell the user the report path (in the user language) and summarize in a few sentences: what changed, where to start reading, and the 2–3 highest risks.
 
-## 报告怎么用（可转告用户）
+## Using the report (relay to the user if useful)
 
-- 顶部「EN / 中文」切换界面语言；右上角选择「白色 / 黑色 / 系统」，默认跟随系统；手动选择保存在 localStorage。主题、图标和字体均内嵌，离线可用
-- 左侧默认显示「文件」树，支持路径搜索、目录折叠及后缀过滤；切换「审阅路径」可按改动集逐个看，点击后按 `j`/`k` 依次浏览实体，`r` 标记已审（进度保存在浏览器 localStorage）
-- 中间图：模块视图 ↔ 实体视图；单击看详情，双击聚焦某节点的上下游；「显示」里可切换未改动调用方、资源、测试、纯移动
-- 右侧：签名变化、调用方（区分本次改动/未改动/测试）、资源读写、日志、代码 diff；文件路径可直接在 VS Code / Cursor / JetBrains 打开
-- Tab 聚焦按钮后用 Enter/空格操作；面板分隔线支持左右方向键调宽、Home 恢复默认，窄屏上下排列
+- The top bar has an **EN / 中文** toggle for the UI language; pick "Light / Dark / System" at the top right (default follows the system). Manual choices are saved in localStorage. Theme, icons and fonts are embedded, so it works offline
+- The left panel shows the **Files** tree by default, with path search, folder collapsing and extension filters; switch to **Review Paths** to go through change sets one by one, then press `j` / `k` to step through entities and `r` to mark one reviewed (progress is saved in the browser's localStorage)
+- Center graph: Module view ↔ Entity view. Click a node for details, double-click to focus its upstream and downstream; the **Display** menu toggles unchanged callers, resources, tests and pure moves
+- Right panel: signature changes, callers (split into modified / unmodified / tests), resource reads and writes, logs, code diff; file paths open directly in VS Code / Cursor / JetBrains
+- Tab to focus a button, then Enter / Space to activate it; panel splitters support the Left/Right arrow keys to resize and Home to reset; narrow screens stack vertically
 
-## 局限
+## Limitations
 
-- TS/JS 引用来自 TypeScript LanguageService（准确）；Go/Python 是按名称匹配（带置信度标记），可能误报漏报
-- 资源（DB/Redis/MQ/配置/路由…）是正则规则识别，依赖注入、反射、动态字符串无法识别
-- 用户想要的东西 PatchVista 给不了时（比如运行时行为），直接说明
+- TS/JS references come from the TypeScript LanguageService (accurate); Go/Python are matched by name (with a confidence marker) and can produce false positives and misses
+- Resources (DB / Redis / MQ / config / routes…) are recognized by regex rules; dependency injection, reflection and dynamic strings cannot be detected
+- When the user wants something PatchVista cannot provide (e.g. runtime behavior), say so plainly

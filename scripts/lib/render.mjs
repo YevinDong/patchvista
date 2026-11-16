@@ -56,7 +56,7 @@ function validate(a, facts) {
   check(Object.keys(a.entityNotes ?? {}));
   check(a.skim);
   if (bad.size) console.error(`[patchvista] analysis.json references unknown ids (ignored): ${[...bad].slice(0, 30).join(', ')}`);
-  // entities not placed in any change set fall into an "其他" set in the UI
+  // entities not placed in any change set fall into an "Other changes" set in the UI
   const placed = new Set((a.changeSets ?? []).flatMap((cs) => cs.entities ?? []));
   const missing = facts.entities.filter((e) => !placed.has(e.sid) && !e.isTest && !e.importOnly && !(e.status === 'moved' && !e.bodyChanged));
   if (missing.length) console.error(`[patchvista] ${missing.length} non-trivial entities not in any change set: ${missing.slice(0, 20).map((e) => e.sid).join(',')}${missing.length > 20 ? '…' : ''}`);

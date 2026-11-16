@@ -496,7 +496,7 @@ const STATUS_LABEL = new Proxy({}, {
 });
 
 const srcLabel = (r) => (r.src === 'rule' ? t('srcRule') : r.src);
-// Rule risks carry structured `params`; render them in the active language (falls back to the stored Chinese text).
+// Rule risks carry structured `params`; render them in the active language (falls back to the stored English text).
 const riskTitle = (r) => (r.src === 'rule' && r.params && RISK_TEXT[currentLang]?.[r.rule]?.title?.(r.params)) || r.title;
 const riskDetail = (r) => (r.src === 'rule' && r.params && RISK_TEXT[currentLang]?.[r.rule]?.detail?.(r.params)) || r.detail;
 
