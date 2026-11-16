@@ -293,7 +293,8 @@ function heuristicRisks({ entities, ctxList, edgeList, resList, files, byId }) {
     if (!incoming.has(ed.to)) incoming.set(ed.to, []);
     incoming.get(ed.to).push(ed);
   }
-  const push = (level, rule, title, detail, ents = [], refs = []) => risks.push({ level, rule, title, detail, entities: ents, refs });
+  // title/detail are Chinese fallbacks (also read by digest/AI); `params` lets the report re-render them in any language.
+  const push = (level, rule, title, detail, ents = [], refs = [], params = {}) => risks.push({ level, rule, title, detail, entities: ents, refs, params });
 
   for (const e of entities) {
     if (e.isTest) continue;
@@ -310,33 +311,35 @@ function heuristicRisks({ entities, ctxList, edgeList, resList, files, byId }) {
       const what = isShape ? '实现/继承方' : '调用方';
       push(isShape ? 'medium' : 'high', 'signature-unchanged-callers', `${e.qname} ${isShape ? '结构' : '签名'}变更，${affected.length} 个${what}未修改`,
         `旧: ${e.old.signature}\n新: ${e.signature}`, [e.sid, ...affected.map((ed) => ctxById.get(ed.from).sid)],
-        affected.flatMap((ed) => ed.refs.slice(0, 1)));
+        affected.flatMap((ed) => ed.refs.slice(0, 1)),
+        { q: e.qname, shape: isShape, n: affected.length, old: e.old.signature, new: e.signature });
     } else if (e.signatureChanged && isShape && unchanged.length >= 3) {
       push('low', 'shape-type-refs', `${e.qname} 结构变更，被 ${unchanged.length} 处未修改代码作为类型引用`,
         `旧: ${e.old.signature.slice(0, 300)}\n新: ${e.signature.slice(0, 300)}`, [e.sid, ...unchanged.map((ed) => ctxById.get(ed.from).sid)],
-        unchanged.flatMap((ed) => ed.refs.slice(0, 1)));
+        unchanged.flatMap((ed) => ed.refs.slice(0, 1)),
+        { q: e.qname, n: unchanged.length, old: e.old.signature.slice(0, 300), new: e.signature.slice(0, 300) });
     }
     if (e.status === 'deleted' && e.formerCallers?.some((c) => c.callerStatus === 'unchanged')) {
       const dang = e.formerCallers.filter((c) => c.callerStatus === 'unchanged');
-      push('high', 'deleted-with-callers', `删除了 ${e.qname}，但原调用方未修改`, dang.map((c) => `${c.file}:${c.line}`).join('\n'), [e.sid], dang);
+      push('high', 'deleted-with-callers', `删除了 ${e.qname}，但原调用方未修改`, dang.map((c) => `${c.file}:${c.line}`).join('\n'), [e.sid], dang, { q: e.qname });
     }
     const lines = e.additions + e.deletions;
-    if (lines >= 120 && e.kind !== 'class') push('medium', 'large-change', `${e.qname} 改动量大（+${e.additions} −${e.deletions}）`, '建议重点审阅', [e.sid], [{ file: e.file, line: e.line }]);
+    if (lines >= 120 && e.kind !== 'class') push('medium', 'large-change', `${e.qname} 改动量大（+${e.additions} −${e.deletions}）`, '建议重点审阅', [e.sid], [{ file: e.file, line: e.line }], { q: e.qname, add: e.additions, del: e.deletions });
     if (['added', 'modified'].includes(e.status) && e.bodyChanged && ['function', 'method'].includes(e.kind) && e.exported !== false && e.name !== 'constructor') {
       const tested = inc.some((ed) => (ctxById.get(ed.from)?.isTest) || byId.get(ed.from)?.isTest);
       e.tested = tested;
     }
   }
   for (const r of resList) {
-    if (r.stillReferenced?.length) push('high', 'config-removed-still-used', `配置项 ${r.name} 已从配置文件删除，代码中仍有引用`, r.stillReferenced.map((h) => `${h.file}:${h.line}  ${h.text}`).join('\n'), [r.sid], r.stillReferenced);
-    if (r.undeclared) push('medium', 'config-undeclared', `新读取的配置项 ${r.name} 未在 .env 示例中声明`, '部署环境可能缺少该变量', [r.sid], r.usages.filter((u) => u.status === 'added'));
-    if (r.kind === 'db' && r.defs.some((d) => /ddl:(drop|alter)/.test(d.op))) push('high', 'ddl', `数据库结构变更：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs);
-    else if (r.kind === 'db' && r.defs.some((d) => d.op === 'ddl:create')) push('medium', 'ddl', `新建表：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs);
-    if (r.kind === 'dep' && r.status !== 'unchanged') push(r.status === 'added' ? 'medium' : 'low', 'dependency', `依赖${{ added: '新增', removed: '移除', modified: '升级' }[r.status] ?? '变更'}：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs);
+    if (r.stillReferenced?.length) push('high', 'config-removed-still-used', `配置项 ${r.name} 已从配置文件删除，代码中仍有引用`, r.stillReferenced.map((h) => `${h.file}:${h.line}  ${h.text}`).join('\n'), [r.sid], r.stillReferenced, { name: r.name });
+    if (r.undeclared) push('medium', 'config-undeclared', `新读取的配置项 ${r.name} 未在 .env 示例中声明`, '部署环境可能缺少该变量', [r.sid], r.usages.filter((u) => u.status === 'added'), { name: r.name });
+    if (r.kind === 'db' && r.defs.some((d) => /ddl:(drop|alter)/.test(d.op))) push('high', 'ddl', `数据库结构变更：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs, { name: r.name, create: false });
+    else if (r.kind === 'db' && r.defs.some((d) => d.op === 'ddl:create')) push('medium', 'ddl', `新建表：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs, { name: r.name, create: true });
+    if (r.kind === 'dep' && r.status !== 'unchanged') push(r.status === 'added' ? 'medium' : 'low', 'dependency', `依赖${{ added: '新增', removed: '移除', modified: '升级' }[r.status] ?? '变更'}：${r.name}`, r.defs.map((d) => d.text).join('\n'), [r.sid], r.defs, { name: r.name, status: r.status });
   }
   const untested = entities.filter((e) => e.tested === false);
-  if (untested.length) push('low', 'untested', `${untested.length} 个新增/修改的函数没有测试直接引用`, untested.slice(0, 30).map((e) => e.qname).join(', '), untested.map((e) => e.sid));
-  for (const f of files) if (f.truncated) push('low', 'truncated', `${f.path} diff 过大已截断`, '', [], [{ file: f.path, line: 1 }]);
+  if (untested.length) push('low', 'untested', `${untested.length} 个新增/修改的函数没有测试直接引用`, untested.slice(0, 30).map((e) => e.qname).join(', '), untested.map((e) => e.sid), [], { n: untested.length });
+  for (const f of files) if (f.truncated) push('low', 'truncated', `${f.path} diff 过大已截断`, '', [], [{ file: f.path, line: 1 }], { path: f.path });
   const order = { high: 0, medium: 1, low: 2 };
   return risks.sort((a, b) => order[a.level] - order[b.level]);
 }

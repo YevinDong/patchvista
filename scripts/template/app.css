@@ -116,6 +116,7 @@ main { flex: 1; display: flex; min-height: 0; min-width: 0; }
 .seg button:hover { background: var(--hover); color: var(--text); }
 .seg button.on, .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .theme-modes { font-size: 12px; }
+.lang-modes { font-size: 12px; font-weight: 500; }
 .crumbs { display: flex; gap: 4px; align-items: center; color: var(--mute); min-width: 0; overflow: hidden; white-space: nowrap; }
 .crumbs button { border: 0; padding: 4px; color: var(--accent); background: none; display: inline-flex; align-items: center; gap: 4px; }
 .crumbs .cur { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }

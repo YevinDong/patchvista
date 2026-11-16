@@ -10,7 +10,10 @@ const vendor = (m) => fs.readFileSync(require.resolve(m), 'utf8');
 // keep inline <script> blocks intact
 const safe = (s) => s.replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--');
 
-export function render(out) {
+export function render(out, opts = {}) {
+  // null → the report picks saved preference / browser language at open time
+  const defaultLang = opts.lang == null || opts.lang === true ? null : opts.lang;
+  if (defaultLang !== null && !['en', 'zh'].includes(defaultLang)) throw new Error(`Unsupported --lang "${opts.lang}" (expected en or zh)`);
   const facts = JSON.parse(fs.readFileSync(path.join(out, 'facts.json'), 'utf8'));
   const ap = path.join(out, 'analysis.json');
   let analysis = null;
@@ -22,6 +25,7 @@ export function render(out) {
     facts,
     analysis,
     reportId: `${facts.meta.repoName}:${facts.meta.range.old.sha?.slice(0, 10)}..${facts.meta.range.new.sha?.slice(0, 10) ?? 'wt'}`,
+    defaultLang,
   };
   const font = fs.readFileSync(path.join(here, '..', 'template', 'fonts', 'patchvista-mono.woff2')).toString('base64');
   const icons = JSON.parse(tpl('lucide-icons.json')).icons;
